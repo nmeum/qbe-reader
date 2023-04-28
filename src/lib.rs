@@ -11,7 +11,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BaseType {
     Word,
     Long,
@@ -42,18 +42,10 @@ fn parse_string(input: &str) -> IResult<&str, String> {
 // BASETY := 'w' | 'l' | 's' | 'd'
 pub fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
     alt((
-        map_res(char('w'), |_| -> Result<BaseType, ()> {
-            Ok(BaseType::Word)
-        }),
-        map_res(char('l'), |_| -> Result<BaseType, ()> {
-            Ok(BaseType::Long)
-        }),
-        map_res(char('s'), |_| -> Result<BaseType, ()> {
-            Ok(BaseType::Single)
-        }),
-        map_res(char('d'), |_| -> Result<BaseType, ()> {
-            Ok(BaseType::Double)
-        }),
+        bind(char('w'), BaseType::Word),
+        bind(char('l'), BaseType::Long),
+        bind(char('s'), BaseType::Single),
+        bind(char('d'), BaseType::Double),
     ))(input)
 }
 
