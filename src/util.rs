@@ -1,5 +1,5 @@
 use nom::{
-    character::complete::char, error::ParseError, multi::many0, sequence::delimited, IResult,
+    character::complete::one_of, error::ParseError, multi::many0, sequence::delimited, IResult,
 };
 
 pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
@@ -8,5 +8,6 @@ pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
 where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
-    delimited(many0(char(' ')), inner, many0(char(' ')))
+    // See https://c9x.me/compile/doc/il-v1.1.html#Spacing
+    delimited(many0(one_of(" \t")), inner, many0(one_of(" \t")))
 }

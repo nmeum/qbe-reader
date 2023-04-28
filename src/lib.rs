@@ -84,7 +84,7 @@ mod tests {
             Ok(("", Linkage::Section(String::from("foobar"), None)))
         );
         assert_eq!(
-            parse_linkage("section \"foo\" \"bar\""),
+            parse_linkage("section \"foo\"	\"bar\""),
             Ok((
                 "",
                 Linkage::Section(String::from("foo"), Some(String::from("bar")))
