@@ -1,6 +1,15 @@
 use nom::{
-    character::complete::one_of, error::ParseError, multi::many0, sequence::delimited, IResult,
+    character::complete::{char, one_of},
+    error::ParseError,
+    multi::{many0, many1},
+    sequence::delimited,
+    IResult,
 };
+
+pub fn newlines(input: &str) -> IResult<&str, ()> {
+    let (input, _) = many1(char('\n'))(input)?;
+    Ok((input, ()))
+}
 
 pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,

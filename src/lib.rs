@@ -7,7 +7,7 @@ use nom::{
     character::complete::{char, none_of},
     combinator::{map_res, opt},
     multi::many0,
-    sequence::{delimited, tuple},
+    sequence::{delimited, tuple, terminated},
     IResult,
 };
 
@@ -45,7 +45,7 @@ fn parse_string(input: &str) -> IResult<&str, String> {
 //
 // SECNAME  := '"' .... '"'
 // SECFLAGS := '"' .... '"'
-pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
+pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
     alt((
         map_res(tag("export"), |_| -> Result<Linkage, ()> {
             Ok(Linkage::Export)
@@ -62,6 +62,11 @@ pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
     ))(input)
 }
 
+// Parse linkage terminated with one or more newline characters.
+pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
+    terminated(ws(_parse_linkage), newlines)(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,16 +80,16 @@ mod tests {
     #[test]
     fn linkage() {
         // Primitive linkage directives
-        assert_eq!(parse_linkage("export"), Ok(("", Linkage::Export)));
-        assert_eq!(parse_linkage("thread"), Ok(("", Linkage::Thread)));
+        assert_eq!(parse_linkage("export\n"), Ok(("", Linkage::Export)));
+        assert_eq!(parse_linkage("thread\n"), Ok(("", Linkage::Thread)));
 
         // Section linkage directive
         assert_eq!(
-            parse_linkage("section \"foobar\""),
+            parse_linkage("section \"foobar\"\n"),
             Ok(("", Linkage::Section(String::from("foobar"), None)))
         );
         assert_eq!(
-            parse_linkage("section \"foo\"	\"bar\""),
+            parse_linkage(" section \"foo\"	\"bar\" \n"),
             Ok((
                 "",
                 Linkage::Section(String::from("foo"), Some(String::from("bar")))
