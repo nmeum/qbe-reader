@@ -438,7 +438,6 @@ mod tests {
 
     #[test]
     fn data_definition() {
-        // TODO: Expand
         let input = "data $b = { z 1000 }";
         let items = vec![DataObj::ZeroFill(1000)];
         assert_eq!(
@@ -448,6 +447,33 @@ mod tests {
                 DataDef {
                     linkage: vec![],
                     name: String::from("b"),
+                    align: None,
+                    objs: items
+                }
+            ))
+        );
+
+        let input = "data $c = { l -1 2, l $c }";
+        let items = vec![
+            DataObj::DataItem(
+                ExtType::Base(BaseType::Long),
+                vec![
+                    DataItem::Const(Const::Number(-1)),
+                    DataItem::Const(Const::Number(2)),
+                ],
+            ),
+            DataObj::DataItem(
+                ExtType::Base(BaseType::Long),
+                vec![DataItem::Symbol(String::from("c"), None)],
+            ),
+        ];
+        assert_eq!(
+            parse_data(input),
+            Ok((
+                "",
+                DataDef {
+                    linkage: vec![],
+                    name: String::from("c"),
                     align: None,
                     objs: items
                 }
