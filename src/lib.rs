@@ -7,7 +7,7 @@ use nom::{
     character::complete::{char, none_of},
     combinator::{map_res, opt},
     multi::many0,
-    sequence::{delimited, tuple, terminated},
+    sequence::{delimited, terminated, tuple},
     IResult,
 };
 
@@ -38,6 +38,24 @@ fn parse_string(input: &str) -> IResult<&str, String> {
 }
 
 ////////////////////////////////////////////////////////////////////////
+
+// BASETY := 'w' | 'l' | 's' | 'd'
+pub fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
+    alt((
+        map_res(char('w'), |_| -> Result<BaseType, ()> {
+            Ok(BaseType::Word)
+        }),
+        map_res(char('l'), |_| -> Result<BaseType, ()> {
+            Ok(BaseType::Long)
+        }),
+        map_res(char('s'), |_| -> Result<BaseType, ()> {
+            Ok(BaseType::Single)
+        }),
+        map_res(char('d'), |_| -> Result<BaseType, ()> {
+            Ok(BaseType::Double)
+        }),
+    ))(input)
+}
 
 // LINKAGE :=
 //     'export'
