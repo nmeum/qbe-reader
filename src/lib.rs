@@ -19,6 +19,13 @@ pub enum BaseType {
     Double,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ExtType {
+    Base(BaseType),
+    Byte,
+    Halfword,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Linkage {
     Export,
@@ -46,6 +53,17 @@ pub fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
         bind(char('l'), BaseType::Long),
         bind(char('s'), BaseType::Single),
         bind(char('d'), BaseType::Double),
+    ))(input)
+}
+
+// EXTTY := BASETY | 'b' | 'h'
+pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
+    alt((
+        bind(char('b'), ExtType::Byte),
+        bind(char('h'), ExtType::Halfword),
+        map_res(parse_base_type, |ty| -> Result<ExtType, ()> {
+            Ok(ExtType::Base(ty))
+        }),
     ))(input)
 }
 
@@ -107,5 +125,21 @@ mod tests {
                 Linkage::Section(String::from("foo"), Some(String::from("bar")))
             ))
         );
+    }
+
+    #[test]
+    fn types() {
+        // Base types
+        assert_eq!(parse_base_type("w"), Ok(("", BaseType::Word)));
+        assert_eq!(parse_base_type("l"), Ok(("", BaseType::Long)));
+        assert_eq!(parse_base_type("s"), Ok(("", BaseType::Single)));
+        assert_eq!(parse_base_type("d"), Ok(("", BaseType::Double)));
+
+        // Extented types
+        assert_eq!(
+            parse_ext_type("s"),
+            Ok(("", ExtType::Base(BaseType::Single)))
+        );
+        assert_eq!(parse_ext_type("h"), Ok(("", ExtType::Halfword)));
     }
 }
