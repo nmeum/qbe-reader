@@ -26,6 +26,8 @@ pub enum Linkage {
     Section(String, Option<String>),
 }
 
+////////////////////////////////////////////////////////////////////////
+
 // STRING := '"' .... '"'
 fn parse_string(input: &str) -> IResult<&str, String> {
     // TODO: Does qbe support escaping in strings?
@@ -64,7 +66,7 @@ pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
 
 // Parse linkage terminated with one or more newline characters.
 pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
-    terminated(ws(_parse_linkage), newlines)(input)
+    terminated(ws(_parse_linkage), newline0)(input)
 }
 
 #[cfg(test)]
@@ -80,8 +82,8 @@ mod tests {
     #[test]
     fn linkage() {
         // Primitive linkage directives
-        assert_eq!(parse_linkage("export\n"), Ok(("", Linkage::Export)));
-        assert_eq!(parse_linkage("thread\n"), Ok(("", Linkage::Thread)));
+        assert_eq!(parse_linkage("export"), Ok(("", Linkage::Export)));
+        assert_eq!(parse_linkage("thread"), Ok(("", Linkage::Thread)));
 
         // Section linkage directive
         assert_eq!(

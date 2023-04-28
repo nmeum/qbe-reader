@@ -1,13 +1,13 @@
 use nom::{
     character::complete::{char, one_of},
     error::ParseError,
-    multi::{many0, many1},
+    multi::many0,
     sequence::delimited,
     IResult,
 };
 
-pub fn newlines(input: &str) -> IResult<&str, ()> {
-    let (input, _) = many1(char('\n'))(input)?;
+pub fn newline0(input: &str) -> IResult<&str, ()> {
+    let (input, _) = many0(char('\n'))(input)?;
     Ok((input, ()))
 }
 
