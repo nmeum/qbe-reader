@@ -22,9 +22,20 @@ where
     map_res(inner, move |_| -> Result<T, ()> { Ok(val) })
 }
 
-pub fn digits(input: &str) -> IResult<&str, i64> {
-    map_res(recognize(many1(one_of("0123456789"))), |input: &str| {
+pub fn digits(input: &str) -> IResult<&str, &str> {
+    recognize(many1(one_of("0123456789")))(input)
+}
+
+pub fn parse_i64(input: &str) -> IResult<&str, i64> {
+    map_res(digits, |input: &str| {
         i64::from_str_radix(input, 10)
+    })(input)
+}
+
+// TODO: Use generics to refactor parse_u64 and parse_i64
+pub fn parse_u64(input: &str) -> IResult<&str, u64> {
+    map_res(digits, |input: &str| {
+        u64::from_str_radix(input, 10)
     })(input)
 }
 

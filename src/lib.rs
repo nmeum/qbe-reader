@@ -48,6 +48,13 @@ pub enum Linkage {
     Section(String, Option<String>),
 }
 
+#[derive(Debug, PartialEq)]
+pub enum DataItem {
+    Symbol(String, Option<u64>),
+    String(String),
+    Const(Const),
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 // STRING := '"' .... '"'
@@ -114,7 +121,7 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
     // See: https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n245
     alt((
         map_res(
-            tuple((opt(char('-')), ws(digits))),
+            tuple((opt(char('-')), ws(parse_i64))),
             |(pfx, n)| -> Result<Const, ()> {
                 match pfx {
                     Some(_) => Ok(Const::Number(-n)),
@@ -187,6 +194,30 @@ pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
 // Parse linkage terminated with one or more newline characters.
 pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
     terminated(ws(_parse_linkage), newline0)(input)
+}
+
+// DATAITEM :=
+//     $IDENT ['+' NUMBER]  # Symbol and offset
+//   |  '"' ... '"'         # String
+//   |  CONST               # Constant
+pub fn parse_data_item(input: &str) -> IResult<&str, DataItem> {
+    alt((
+        map_res(
+            pair(
+                parse_global,
+                opt(preceded(opt(ws(char('+'))), ws(parse_u64)))
+            ),
+            |(ident, off)| -> Result<DataItem, ()> { Ok(DataItem::Symbol(ident, off)) }
+        ),
+        map_res(
+            parse_string,
+            |s| -> Result<DataItem, ()> { Ok(DataItem::String(s)) }
+        ),
+        map_res(
+            parse_const,
+            |c| -> Result<DataItem, ()> { Ok(DataItem::Const(c)) }
+        ),
+    ))(input)
 }
 
 #[cfg(test)]
@@ -269,5 +300,21 @@ mod tests {
         // Thread-local symbol
         assert_eq!(parse_dynconst("thread $foo"), Ok(("", DynConst::Thread(String::from("foo")))));
         assert_eq!(parse_dynconst("thread	$foo"), Ok(("", DynConst::Thread(String::from("foo")))));
+    }
+
+    #[test]
+    fn data_item() {
+        // Symbolic with and without offset
+        assert_eq!(parse_data_item("$foo"), Ok(("", DataItem::Symbol(String::from("foo"), None))));
+        assert_eq!(parse_data_item("$foo +23"), Ok(("", DataItem::Symbol(String::from("foo"), Some(23)))));
+        assert_eq!(parse_data_item("$foo   +  23"), Ok(("", DataItem::Symbol(String::from("foo"), Some(23)))));
+
+        // String
+        assert_eq!(parse_data_item("\"test\""), Ok(("", DataItem::String(String::from("test")))));
+        assert_eq!(parse_data_item("\" f o o\""), Ok(("", DataItem::String(String::from(" f o o")))));
+
+        // Constant
+        assert_eq!(parse_data_item("23"), Ok(("", DataItem::Const(Const::Number(23)))));
+        assert_eq!(parse_data_item("s_42"), Ok(("", DataItem::Const(Const::SFP(42.)))));
     }
 }
