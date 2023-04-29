@@ -5,7 +5,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{char, none_of},
-    combinator::{map_res, opt},
+    combinator::{map_res, opt, recognize},
     multi::many0,
     sequence::{delimited, terminated, tuple},
     IResult,
@@ -47,8 +47,8 @@ pub enum Linkage {
 fn parse_string(input: &str) -> IResult<&str, String> {
     // TODO: Does qbe support escaping in strings?
     map_res(
-        delimited(char('"'), many0(none_of("\"")), char('"')),
-        |v| -> Result<String, ()> { Ok(v.into_iter().collect()) },
+        delimited(char('"'), recognize(many0(none_of("\""))), char('"')),
+        |s| -> Result<String, ()> { Ok(String::from(s)) },
     )(input)
 }
 
