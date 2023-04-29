@@ -27,6 +27,14 @@ pub enum ExtType {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Const {
+    Number(i64),
+    SFP(f32),
+    DFP(f64),
+    Ident(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Linkage {
     Export,
     Thread,
@@ -64,6 +72,25 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
         map_res(parse_base_type, |ty| -> Result<ExtType, ()> {
             Ok(ExtType::Base(ty))
         }),
+    ))(input)
+}
+
+// CONST :=
+//     ['-'] NUMBER  # Decimal integer
+//   | 's_' FP       # Single-precision float
+//   | 'd_' FP       # Double-precision float
+//   | $IDENT        # Global symbol
+pub fn parse_const(input: &str) -> IResult<&str, Const> {
+    alt((
+        map_res(
+            tuple((opt(char('-')), ws(digits))),
+            |(pfx, n)| -> Result<Const, ()> {
+                match pfx {
+                    Some(_) => Ok(Const::Number(-n)),
+                    None    => Ok(Const::Number(n))
+                }
+            }
+        ),
     ))(input)
 }
 

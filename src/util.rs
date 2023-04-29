@@ -1,8 +1,8 @@
 use nom::{
     character::complete::{char, one_of},
-    combinator::map_res,
+    combinator::{map_res, recognize},
     error::{FromExternalError, ParseError},
-    multi::many0,
+    multi::{many0, many1},
     sequence::delimited,
     IResult,
 };
@@ -20,6 +20,12 @@ where
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     map_res(inner, move |_| -> Result<T, ()> { Ok(val) })
+}
+
+pub fn digits(input: &str) -> IResult<&str, i64> {
+    map_res(recognize(many1(one_of("0123456789"))), |input: &str| {
+        i64::from_str_radix(input, 10)
+    })(input)
 }
 
 pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
