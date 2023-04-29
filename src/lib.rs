@@ -2,6 +2,7 @@ mod util;
 use crate::util::*;
 
 use nom::{
+    number::complete::{double, float},
     branch::alt,
     bytes::complete::tag,
     character::complete::{char, none_of, alpha1, alphanumeric1},
@@ -98,6 +99,8 @@ pub fn parse_ident(input: &str) -> IResult<&str, String> {
 //   | 'd_' FP       # Double-precision float
 //   | $IDENT        # Global symbol
 pub fn parse_const(input: &str) -> IResult<&str, Const> {
+    // TODO: Ensure that floating point parser matches what QBE's parser does.
+    // See: https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n245
     alt((
         map_res(
             tuple((opt(char('-')), ws(digits))),
@@ -107,6 +110,20 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
                     None    => Ok(Const::Number(n))
                 }
             }
+        ),
+        preceded(
+            tag("s_"),
+            map_res(
+                float,
+                |f| -> Result<Const, ()> { Ok(Const::SFP(f)) }
+            )
+        ),
+        preceded(
+            tag("d_"),
+            map_res(
+                double,
+                |f| -> Result<Const, ()> { Ok(Const::DFP(f)) }
+            )
         ),
         preceded(
             char('$'),
@@ -210,5 +227,12 @@ mod tests {
         // Identifier
         assert_eq!(parse_const("$foobar"), Ok(("", Const::Ident(String::from("foobar")))));
         assert_eq!(parse_const("$_fo$$r"), Ok(("", Const::Ident(String::from("_fo$$r")))));
+
+        // Float
+        assert_eq!(parse_const("s_23.42"), Ok(("", Const::SFP(23.42))));
+        assert_eq!(parse_const("s_23."), Ok(("", Const::SFP(23.))));
+
+        // Double
+        assert_eq!(parse_const("d_11e-1"), Ok(("", Const::DFP(1.1))));
     }
 }
