@@ -27,16 +27,12 @@ pub fn digits(input: &str) -> IResult<&str, &str> {
 }
 
 pub fn parse_i64(input: &str) -> IResult<&str, i64> {
-    map_res(digits, |input: &str| {
-        i64::from_str_radix(input, 10)
-    })(input)
+    map_res(digits, |input: &str| i64::from_str_radix(input, 10))(input)
 }
 
 // TODO: Use generics to refactor parse_u64 and parse_i64
 pub fn parse_u64(input: &str) -> IResult<&str, u64> {
-    map_res(digits, |input: &str| {
-        u64::from_str_radix(input, 10)
-    })(input)
+    map_res(digits, |input: &str| u64::from_str_radix(input, 10))(input)
 }
 
 pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
