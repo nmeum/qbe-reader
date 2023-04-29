@@ -1,0 +1,4 @@
+#!/bin/sh
+exec rustfmt \
+	--files-with-diff \
+	--check src/*.rs
