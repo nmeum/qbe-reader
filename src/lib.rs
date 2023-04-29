@@ -36,6 +36,12 @@ pub enum Const {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum DynConst {
+    Const(Const),
+    Thread(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Linkage {
     Export,
     Thread,
@@ -134,6 +140,22 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
             parse_global,
             |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }
         )
+    ))(input)
+}
+
+// DYNCONST :=
+//     CONST
+//   | 'thread' $IDENT  # Thread-local symbol
+pub fn parse_dynconst(input: &str) -> IResult<&str, DynConst> {
+    alt((
+        map_res(
+            parse_const,
+            |c| -> Result<DynConst, ()> { Ok(DynConst::Const(c)) }
+        ),
+        map_res(
+            preceded(tag("thread"), ws(parse_global)),
+            |i| -> Result<DynConst, ()> { Ok(DynConst::Thread(i)) }
+        ),
     ))(input)
 }
 
@@ -236,5 +258,16 @@ mod tests {
 
         // Double
         assert_eq!(parse_const("d_11e-1"), Ok(("", Const::DFP(1.1))));
+    }
+
+    #[test]
+    fn dynamic_constant() {
+        // Constant
+        assert_eq!(parse_dynconst("-   23"), Ok(("", DynConst::Const(Const::Number(-23)))));
+        assert_eq!(parse_dynconst("234223422342"), Ok(("", DynConst::Const(Const::Number(234223422342)))));
+
+        // Thread-local symbol
+        assert_eq!(parse_dynconst("thread $foo"), Ok(("", DynConst::Thread(String::from("foo")))));
+        assert_eq!(parse_dynconst("thread	$foo"), Ok(("", DynConst::Thread(String::from("foo")))));
     }
 }
