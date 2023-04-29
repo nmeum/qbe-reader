@@ -4,10 +4,10 @@ use crate::util::*;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, none_of},
+    character::complete::{char, none_of, alpha1, alphanumeric1},
     combinator::{map_res, opt, recognize},
-    multi::many0,
-    sequence::{delimited, terminated, tuple},
+    multi::{many0, many0_count},
+    sequence::{preceded, delimited, terminated, tuple, pair},
     IResult,
 };
 
@@ -75,6 +75,23 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
     ))(input)
 }
 
+// Parse an identifier. This is not defined in the "formal" EBNF
+// grammar of QBE but the existing QBE parser parses alphanumeric
+// characters including '.' and '_'.
+//
+// See https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n302
+pub fn parse_ident(input: &str) -> IResult<&str, String> {
+    map_res(
+        recognize(
+            pair(
+                alt((alpha1, tag("."), tag("_"))),
+                many0_count(alt((alphanumeric1, tag("$"), tag("."), tag("_"))))
+            )
+        ),
+        |s| -> Result<String, ()> { Ok(String::from(s)) },
+    )(input)
+}
+
 // CONST :=
 //     ['-'] NUMBER  # Decimal integer
 //   | 's_' FP       # Single-precision float
@@ -91,6 +108,13 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
                 }
             }
         ),
+        preceded(
+            char('$'),
+            map_res(
+                parse_ident,
+                |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }
+            )
+        )
     ))(input)
 }
 
@@ -168,5 +192,23 @@ mod tests {
             Ok(("", ExtType::Base(BaseType::Single)))
         );
         assert_eq!(parse_ext_type("h"), Ok(("", ExtType::Halfword)));
+    }
+
+    #[test]
+    fn ident() {
+        assert_eq!(parse_ident("_foo"), Ok(("", String::from("_foo"))));
+        assert_eq!(parse_ident("foobar"), Ok(("", String::from("foobar"))));
+        assert_eq!(parse_ident("foo$_.23__"), Ok(("", String::from("foo$_.23__"))));
+    }
+
+    #[test]
+    fn constant() {
+        // Number
+        assert_eq!(parse_const("23"), Ok(("", Const::Number(23))));
+        assert_eq!(parse_const("-5"), Ok(("", Const::Number(-5))));
+
+        // Identifier
+        assert_eq!(parse_const("$foobar"), Ok(("", Const::Ident(String::from("foobar")))));
+        assert_eq!(parse_const("$_fo$$r"), Ok(("", Const::Ident(String::from("_fo$$r")))));
     }
 }
