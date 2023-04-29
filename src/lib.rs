@@ -53,6 +53,28 @@ fn parse_string(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
+// Parse an identifier. This is not defined in the "formal" EBNF
+// grammar of QBE but the existing QBE parser parses alphanumeric
+// characters including '.' and '_'.
+//
+// See https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n302
+fn parse_ident(input: &str) -> IResult<&str, String> {
+    map_res(
+        recognize(
+            pair(
+                alt((alpha1, tag("."), tag("_"))),
+                many0_count(alt((alphanumeric1, tag("$"), tag("."), tag("_"))))
+            )
+        ),
+        |s| -> Result<String, ()> { Ok(String::from(s)) },
+    )(input)
+}
+
+// See https://c9x.me/compile/doc/il-v1.1.html#Sigils
+fn parse_global(input: &str) -> IResult<&str, String> {
+    preceded(char('$'), parse_ident)(input)
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 // BASETY := 'w' | 'l' | 's' | 'd'
@@ -74,23 +96,6 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
             Ok(ExtType::Base(ty))
         }),
     ))(input)
-}
-
-// Parse an identifier. This is not defined in the "formal" EBNF
-// grammar of QBE but the existing QBE parser parses alphanumeric
-// characters including '.' and '_'.
-//
-// See https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n302
-pub fn parse_ident(input: &str) -> IResult<&str, String> {
-    map_res(
-        recognize(
-            pair(
-                alt((alpha1, tag("."), tag("_"))),
-                many0_count(alt((alphanumeric1, tag("$"), tag("."), tag("_"))))
-            )
-        ),
-        |s| -> Result<String, ()> { Ok(String::from(s)) },
-    )(input)
 }
 
 // CONST :=
@@ -125,12 +130,9 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
                 |f| -> Result<Const, ()> { Ok(Const::DFP(f)) }
             )
         ),
-        preceded(
-            char('$'),
-            map_res(
-                parse_ident,
-                |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }
-            )
+        map_res(
+            parse_global,
+            |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }
         )
     ))(input)
 }
