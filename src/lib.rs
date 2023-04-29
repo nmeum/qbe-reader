@@ -7,7 +7,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{char, none_of, alpha1, alphanumeric1},
     combinator::{map_res, opt, recognize},
-    multi::{many0, many0_count},
+    multi::{many0, many1, many0_count, separated_list1},
     sequence::{preceded, delimited, terminated, tuple, pair},
     IResult,
 };
@@ -46,6 +46,20 @@ pub enum Linkage {
     Export,
     Thread,
     Section(String, Option<String>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct DataDef {
+    pub linkage: Vec<Linkage>,
+    pub name: String,
+    pub align: Option<u64>,
+    pub objs: Vec<DataObj>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum DataObj {
+    DataItem(ExtType, Vec<DataItem>),
+    ZeroFill(u64),
 }
 
 #[derive(Debug, PartialEq)]
@@ -196,6 +210,58 @@ pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
     terminated(ws(_parse_linkage), newline0)(input)
 }
 
+// DATADEF :=
+//     LINKAGE*
+//     'data' $IDENT '=' ['align' NUMBER]
+//     '{'
+//         ( EXTTY DATAITEM+
+//         | 'z'   NUMBER ),
+//     '}'
+pub fn parse_data(input: &str) -> IResult<&str, DataDef> {
+    map_res(
+        tuple((
+            many0(ws(parse_linkage)),
+            ws(tag("data")),
+            parse_global,
+            ws(char('=')),
+            opt(preceded(tag("align"), parse_u64)),
+            delimited(ws(char('{')), parse_data_objs, char('}'))
+        )),
+        |(lnk, _, ident, _, align, objs)| -> Result<DataDef, ()> {
+            Ok(DataDef {
+                linkage: lnk,
+                name: ident,
+                align: align,
+                objs: objs,
+            })
+        }
+    )(input)
+}
+
+// DATAOBJS := ( DATAOBJ ),
+pub fn parse_data_objs(input: &str) -> IResult<&str, Vec<DataObj>> {
+    separated_list1(ws(char(',')), parse_data_obj)(input)
+}
+
+// DATAOBJ := EXTTY DATAITEM+
+//          | 'z'   NUMBER
+pub fn parse_data_obj(input: &str) -> IResult<&str, DataObj> {
+    alt((
+        map_res(
+            pair(parse_ext_type, many1(ws(parse_data_item))),
+            |(ty, items)| -> Result<DataObj, ()> {
+                Ok(DataObj::DataItem(ty, items))
+            }
+        ),
+        map_res(
+            preceded(char('z'), ws(parse_u64)),
+            |n| -> Result<DataObj, ()> {
+                Ok(DataObj::ZeroFill(n))
+            }
+        ),
+    ))(input)
+}
+
 // DATAITEM :=
 //     $IDENT ['+' NUMBER]  # Symbol and offset
 //   |  '"' ... '"'         # String
@@ -316,5 +382,35 @@ mod tests {
         // Constant
         assert_eq!(parse_data_item("23"), Ok(("", DataItem::Const(Const::Number(23)))));
         assert_eq!(parse_data_item("s_42"), Ok(("", DataItem::Const(Const::SFP(42.)))));
+    }
+
+    #[test]
+    fn data_object() {
+        // TODO: Expand
+        assert_eq!(parse_data_obj("h 23"),
+            Ok(("", DataObj::DataItem(ExtType::Halfword, vec![DataItem::Const(Const::Number(23))]))));
+        assert_eq!(parse_data_obj("z   42"),
+            Ok(("", DataObj::ZeroFill(42))));
+    }
+
+    #[test]
+    fn data_objects() {
+        // TODO: Expand
+        assert_eq!(parse_data_objs("z 1337"),
+            Ok(("", vec![DataObj::ZeroFill(1337)])));
+        assert_eq!(parse_data_objs("z 42, z 10"),
+            Ok(("", vec![DataObj::ZeroFill(42), DataObj::ZeroFill(10)])));
+    }
+
+    #[test]
+    fn data_definition() {
+        let input = "data $b = { z 1000 }";
+        let items = vec![DataObj::ZeroFill(1000)];
+        assert_eq!(parse_data(input),
+                   Ok(("", DataDef{
+                       linkage: vec![],
+                       name: String::from("b"),
+                       align: None,
+                       objs: items})));
     }
 }
