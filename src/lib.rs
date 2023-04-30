@@ -3,9 +3,12 @@ mod parser;
 mod types;
 mod util;
 
-use nom::{branch::alt, combinator::map_res, multi::separated_list1, IResult};
+use nom::{
+    branch::alt, combinator::map_res, multi::separated_list1, sequence::terminated, IResult,
+};
 
 use crate::error::Error;
+use crate::util::newline;
 use std::convert;
 use std::fs::File;
 use std::io::Read;
@@ -33,7 +36,10 @@ fn parse_def(input: &str) -> IResult<&str, Definition> {
 }
 
 fn parse_defs(input: &str) -> IResult<&str, Vec<Definition>> {
-    separated_list1(util::ws(util::newline0), parse_def)(input)
+    terminated(
+        separated_list1(util::ws(util::newline0), parse_def),
+        newline,
+    )(input)
 }
 
 ////////////////////////////////////////////////////////////////////////
