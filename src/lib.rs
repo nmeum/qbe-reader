@@ -27,6 +27,14 @@ pub enum ExtType {
     Halfword,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum SubWordType {
+    SignedByte,
+    UnsignedByte,
+    SignedHalf,
+    UnsignedHalf,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Const {
     Number(i64),
@@ -120,6 +128,16 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
         map_res(parse_base_type, |ty| -> Result<ExtType, ()> {
             Ok(ExtType::Base(ty))
         }),
+    ))(input)
+}
+
+// SUBWTY := 'sb' | 'ub' | 'sh' | 'uh'
+pub fn parse_sub_word(input: &str) -> IResult<&str, SubWordType> {
+    alt((
+        bind(tag("sb"), SubWordType::SignedByte),
+        bind(tag("ub"), SubWordType::UnsignedHalf),
+        bind(tag("sh"), SubWordType::SignedHalf),
+        bind(tag("uh"), SubWordType::UnsignedHalf),
     ))(input)
 }
 
