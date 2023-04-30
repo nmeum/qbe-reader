@@ -7,8 +7,13 @@ use nom::{
     IResult,
 };
 
+pub fn newline(input: &str) -> IResult<&str, ()> {
+    let (input, _) = char('\n')(input)?;
+    Ok((input, ()))
+}
+
 pub fn newline0(input: &str) -> IResult<&str, ()> {
-    let (input, _) = many0(char('\n'))(input)?;
+    let (input, _) = many0(newline)(input)?;
     Ok((input, ()))
 }
 

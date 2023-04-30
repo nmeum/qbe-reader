@@ -42,6 +42,13 @@ pub enum SubType {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Type {
+    Base(BaseType),
+    SubWordType(SubWordType),
+    Ident(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Const {
     Number(i64),
     SFP(f32),
@@ -95,6 +102,33 @@ pub enum DataItem {
     Const(Const),
 }
 
+#[derive(Debug, PartialEq)]
+pub struct FuncDef {
+    pub linkage: Linkage,
+    pub name: String,
+    pub abity: Option<Type>,
+    pub params: Vec<FuncParam>,
+    pub body: Vec<Block>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum FuncParam {
+    Regular(Type, String),
+    Env(String),
+    Variadic,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Block {
+    pub label: String,
+    pub jump: Instr,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Instr {
+    Halt, // hlt
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 // STRING := '"' .... '"'
@@ -128,6 +162,12 @@ fn parse_global(input: &str) -> IResult<&str, String> {
 fn parse_userdef(input: &str) -> IResult<&str, String> {
     preceded(char(':'), parse_ident)(input)
 }
+fn parse_local(input: &str) -> IResult<&str, String> {
+    preceded(char('%'), parse_ident)(input)
+}
+fn parse_label(input: &str) -> IResult<&str, String> {
+    preceded(char('@'), parse_ident)(input)
+}
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -149,16 +189,6 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
         map_res(parse_base_type, |ty| -> Result<ExtType, ()> {
             Ok(ExtType::Base(ty))
         }),
-    ))(input)
-}
-
-// SUBWTY := 'sb' | 'ub' | 'sh' | 'uh'
-pub fn parse_sub_word(input: &str) -> IResult<&str, SubWordType> {
-    alt((
-        bind(tag("sb"), SubWordType::SignedByte),
-        bind(tag("ub"), SubWordType::UnsignedHalf),
-        bind(tag("sh"), SubWordType::SignedHalf),
-        bind(tag("uh"), SubWordType::UnsignedHalf),
     ))(input)
 }
 
@@ -380,6 +410,119 @@ pub fn parse_data_item(input: &str) -> IResult<&str, DataItem> {
             Ok(DataItem::Const(c))
         }),
     ))(input)
+}
+
+// FUNCDEF :=
+//     LINKAGE*
+//     'function' [ABITY] $IDENT '(' (PARAM), ')' [NL]
+//     '{' NL
+//         BODY
+//     '}'
+pub fn parse_function(input: &str) -> IResult<&str, FuncDef> {
+    map_res(
+        tuple((
+            parse_linkage,
+            ws(tag("function")),
+            opt(parse_abity),
+            ws(parse_global),
+            delimited(char('('), ws(parse_params), char(')')),
+            ws(newline0),
+            delimited(ws(char('{')), preceded(newline, parse_body), char('}')),
+        )),
+        |(lnk, _, ret, id, params, _, body)| -> Result<FuncDef, ()> {
+            Ok(FuncDef {
+                linkage: lnk,
+                name: id,
+                abity: ret,
+                params: params,
+                body: body,
+            })
+        },
+    )(input)
+}
+
+// SUBWTY := 'sb' | 'ub' | 'sh' | 'uh'
+pub fn parse_sub_word(input: &str) -> IResult<&str, SubWordType> {
+    alt((
+        bind(tag("sb"), SubWordType::SignedByte),
+        bind(tag("ub"), SubWordType::UnsignedHalf),
+        bind(tag("sh"), SubWordType::SignedHalf),
+        bind(tag("uh"), SubWordType::UnsignedHalf),
+    ))(input)
+}
+
+// ABITY  := BASETY | SUBWTY | :IDENT
+pub fn parse_abity(input: &str) -> IResult<&str, Type> {
+    alt((
+        map_res(parse_base_type, |ty| -> Result<Type, ()> {
+            Ok(Type::Base(ty))
+        }),
+        map_res(parse_sub_word, |ty| -> Result<Type, ()> {
+            Ok(Type::SubWordType(ty))
+        }),
+        map_res(parse_userdef, |str| -> Result<Type, ()> {
+            Ok(Type::Ident(str))
+        }),
+    ))(input)
+}
+
+// PARAM :=
+//     ABITY %IDENT  # Regular parameter
+//   | 'env' %IDENT  # Environment parameter (first)
+//   | '...'         # Variadic marker (last)
+pub fn parse_param(input: &str) -> IResult<&str, FuncParam> {
+    alt((
+        map_res(
+            pair(parse_abity, ws(parse_local)),
+            |(ty, id)| -> Result<FuncParam, ()> { Ok(FuncParam::Regular(ty, id)) },
+        ),
+        map_res(
+            preceded(tag("env"), ws(parse_local)),
+            |id| -> Result<FuncParam, ()> { Ok(FuncParam::Env(id)) },
+        ),
+        map_res(tag("..."), |_| -> Result<FuncParam, ()> {
+            Ok(FuncParam::Variadic)
+        }),
+    ))(input)
+}
+
+// PARAMS = (PARAM),
+pub fn parse_params(input: &str) -> IResult<&str, Vec<FuncParam>> {
+    separated_list1(ws(char(',')), parse_param)(input)
+}
+
+// BODY = BLOCK+
+pub fn parse_body(input: &str) -> IResult<&str, Vec<Block>> {
+    many1(parse_block)(input)
+}
+
+// BLOCK :=
+//    @IDENT NL     # Block label
+//    ( PHI NL )*   # Phi instructions
+//    ( INST NL )*  # Regular instructions
+//    JUMP NL       # Jump or return
+pub fn parse_block(input: &str) -> IResult<&str, Block> {
+    map_res(
+        tuple((
+            terminated(parse_label, ws(newline)),
+            terminated(parse_jump, ws(newline)),
+        )),
+        |(label, jump)| -> Result<Block, ()> {
+            Ok(Block {
+                label: label,
+                jump: jump,
+            })
+        },
+    )(input)
+}
+
+// JUMP :=
+//     'jmp' @IDENT               # Unconditional
+//   | 'jnz' VAL, @IDENT, @IDENT  # Conditional
+//   | 'ret' [VAL]                # Return
+//   | 'hlt'                      # Termination
+pub fn parse_jump(input: &str) -> IResult<&str, Instr> {
+    map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) })(input)
 }
 
 #[cfg(test)]
@@ -646,6 +789,44 @@ mod tests {
                     name: String::from("c"),
                     align: None,
                     objs: items
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn block() {
+        assert_eq!(
+            parse_block("@start\nhlt\n"),
+            Ok((
+                "",
+                Block {
+                    label: String::from("start"),
+                    jump: Instr::Halt,
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn function_definition() {
+        let input = "export function w $getone(:one %p) {\n@start\nhlt\n}";
+        assert_eq!(
+            parse_function(input),
+            Ok((
+                "",
+                FuncDef {
+                    linkage: Linkage::Export,
+                    name: String::from("getone"),
+                    abity: Some(Type::Base(BaseType::Word)),
+                    params: vec![FuncParam::Regular(
+                        Type::Ident(String::from("one")),
+                        String::from("p")
+                    )],
+                    body: vec![Block {
+                        label: String::from("start"),
+                        jump: Instr::Halt,
+                    }]
                 }
             ))
         );
