@@ -111,7 +111,16 @@ pub struct Block {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Value {
+    LocalVar(String),
+    GlobalVar(String),
+    Const(DynConst),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Instr {
-    Jump(String), // jmp
-    Halt,         // hlt
+    Jump(String),               // jmp
+    Jnz(Value, String, String), // jnz
+    Return(Option<Value>),      // ret
+    Halt,                       // hlt
 }

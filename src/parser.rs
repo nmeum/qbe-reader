@@ -394,7 +394,30 @@ fn jump(input: &str) -> IResult<&str, Instr> {
         map_res(preceded(tag("jmp"), label), |l| -> Result<Instr, ()> {
             Ok(Instr::Jump(l))
         }),
+        map_res(
+            tuple((tag("jnz"), ws(value), label, ws(label))),
+            |(_, v, l1, l2)| -> Result<Instr, ()> { Ok(Instr::Jnz(v, l1, l2)) },
+        ),
+        map_res(
+            preceded(tag("ret"), opt(ws(value))),
+            |v| -> Result<Instr, ()> { Ok(Instr::Return(v)) },
+        ),
         map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) }),
+    ))(input)
+}
+
+// TODO: This is not documented in the BNF grammar.
+fn value(input: &str) -> IResult<&str, Value> {
+    alt((
+        map_res(local, |var| -> Result<Value, ()> {
+            Ok(Value::LocalVar(var))
+        }),
+        map_res(global, |var| -> Result<Value, ()> {
+            Ok(Value::GlobalVar(var))
+        }),
+        map_res(dynconstant, |cnst| -> Result<Value, ()> {
+            Ok(Value::Const(cnst))
+        }),
     ))(input)
 }
 
