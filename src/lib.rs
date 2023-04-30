@@ -36,6 +36,12 @@ pub enum SubWordType {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum SubType {
+    ExtType(ExtType),
+    UserDef(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Const {
     Number(i64),
     SFP(f32),
@@ -54,6 +60,18 @@ pub enum Linkage {
     Export,
     Thread,
     Section(String, Option<String>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypeDef {
+    pub name: String,
+    pub defn: AggregateType,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AggregateType {
+    Regular(Option<u64>, Vec<(SubType, u64)>),
+    Opaque(u64, u64),
 }
 
 #[derive(Debug, PartialEq)]
@@ -106,6 +124,9 @@ fn parse_ident(input: &str) -> IResult<&str, String> {
 // See https://c9x.me/compile/doc/il-v1.1.html#Sigils
 fn parse_global(input: &str) -> IResult<&str, String> {
     preceded(char('$'), parse_ident)(input)
+}
+fn parse_userdef(input: &str) -> IResult<&str, String> {
+    preceded(char(':'), parse_ident)(input)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -216,6 +237,79 @@ pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
 // Parse linkage terminated with one or more newline characters.
 pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
     terminated(ws(_parse_linkage), newline0)(input)
+}
+
+// TYPEDEF := REGTY | OPAQUETY
+pub fn parse_typedef(input: &str) -> IResult<&str, TypeDef> {
+    alt((parse_regty, parse_opaque))(input)
+}
+
+// REGTY :=
+//     'type' :IDENT '=' ['align' NUMBER]
+//     '{'
+//         ( SUBTY [NUMBER] ),
+//     '}'
+pub fn parse_regty(input: &str) -> IResult<&str, TypeDef> {
+    map_res(
+        tuple((
+            tag("type"),
+            ws(parse_userdef),
+            char('='),
+            opt(preceded(ws(tag("align")), parse_u64)),
+            delimited(ws(char('{')), parse_members, ws(char('}'))),
+        )),
+        |(_, id, _, align, members)| -> Result<TypeDef, ()> {
+            Ok(TypeDef {
+                name: id,
+                defn: AggregateType::Regular(align, members),
+            })
+        },
+    )(input)
+}
+
+// SUBTY := EXTTY | :IDENT
+pub fn parse_subty(input: &str) -> IResult<&str, SubType> {
+    alt((
+        map_res(parse_ext_type, |ty| -> Result<SubType, ()> {
+            Ok(SubType::ExtType(ty))
+        }),
+        map_res(parse_userdef, |id| -> Result<SubType, ()> {
+            Ok(SubType::UserDef(id))
+        }),
+    ))(input)
+}
+
+// MEMBERS := ( MEMBER ),
+pub fn parse_members(input: &str) -> IResult<&str, Vec<(SubType, u64)>> {
+    separated_list1(ws(char(',')), parse_member)(input)
+}
+
+// MEMBER := SUBTY [NUMBER]
+pub fn parse_member(input: &str) -> IResult<&str, (SubType, u64)> {
+    map_res(
+        pair(parse_subty, opt(ws(parse_u64))),
+        |(ty, n)| -> Result<(SubType, u64), ()> { Ok((ty, n.unwrap_or(1))) },
+    )(input)
+}
+
+// OPAQUETY := 'type' :IDENT '=' 'align' NUMBER '{' NUMBER '}'
+pub fn parse_opaque(input: &str) -> IResult<&str, TypeDef> {
+    map_res(
+        tuple((
+            tag("type"),
+            ws(parse_userdef),
+            char('='),
+            ws(tag("align")),
+            parse_u64,
+            delimited(ws(char('{')), ws(parse_u64), char('}')),
+        )),
+        |(_, id, _, _, size, align)| -> Result<TypeDef, ()> {
+            Ok(TypeDef {
+                name: id,
+                defn: AggregateType::Opaque(size, align),
+            })
+        },
+    )(input)
 }
 
 // DATADEF :=
@@ -388,6 +482,64 @@ mod tests {
         assert_eq!(
             parse_dynconst("thread	$foo"),
             Ok(("", DynConst::Thread(String::from("foo"))))
+        );
+    }
+
+    #[test]
+    fn members() {
+        assert_eq!(
+            parse_members("s 23"),
+            Ok((
+                "",
+                vec![(SubType::ExtType(ExtType::Base(BaseType::Single)), 23)]
+            ))
+        );
+
+        assert_eq!(
+            parse_members("s, s, d, d"),
+            Ok((
+                "",
+                vec![
+                    (SubType::ExtType(ExtType::Base(BaseType::Single)), 1),
+                    (SubType::ExtType(ExtType::Base(BaseType::Single)), 1),
+                    (SubType::ExtType(ExtType::Base(BaseType::Double)), 1),
+                    (SubType::ExtType(ExtType::Base(BaseType::Double)), 1),
+                ]
+            ))
+        );
+    }
+
+    #[test]
+    fn aggregate_types() {
+        // TODO: Expand
+        assert_eq!(
+            parse_typedef("type :fourfloats = { s, s, d, d }"),
+            Ok((
+                "",
+                TypeDef {
+                    name: String::from("fourfloats"),
+                    defn: AggregateType::Regular(
+                        None,
+                        vec![
+                            (SubType::ExtType(ExtType::Base(BaseType::Single)), 1),
+                            (SubType::ExtType(ExtType::Base(BaseType::Single)), 1),
+                            (SubType::ExtType(ExtType::Base(BaseType::Double)), 1),
+                            (SubType::ExtType(ExtType::Base(BaseType::Double)), 1),
+                        ]
+                    )
+                }
+            ))
+        );
+
+        assert_eq!(
+            parse_typedef("type :opaque = align 16 { 32 }"),
+            Ok((
+                "",
+                TypeDef {
+                    name: String::from("opaque"),
+                    defn: AggregateType::Opaque(16, 32),
+                }
+            ))
         );
     }
 
