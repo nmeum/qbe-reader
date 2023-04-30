@@ -126,7 +126,8 @@ pub struct Block {
 
 #[derive(Debug, PartialEq)]
 pub enum Instr {
-    Halt, // hlt
+    Jump(String), // jmp
+    Halt,         // hlt
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -522,7 +523,13 @@ pub fn parse_block(input: &str) -> IResult<&str, Block> {
 //   | 'ret' [VAL]                # Return
 //   | 'hlt'                      # Termination
 pub fn parse_jump(input: &str) -> IResult<&str, Instr> {
-    map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) })(input)
+    alt((
+        map_res(
+            preceded(tag("jmp"), parse_label),
+            |l| -> Result<Instr, ()> { Ok(Instr::Jump(l)) },
+        ),
+        map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) }),
+    ))(input)
 }
 
 #[cfg(test)]
