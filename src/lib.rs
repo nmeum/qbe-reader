@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path;
 
+#[derive(Debug)]
 pub enum Definition {
     Type(types::TypeDef),
     Data(types::DataDef),
