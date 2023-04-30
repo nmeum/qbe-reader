@@ -90,7 +90,7 @@ pub enum DataItem {
 
 #[derive(Debug, PartialEq)]
 pub struct FuncDef {
-    pub linkage: Linkage,
+    pub linkage: Vec<Linkage>,
     pub name: String,
     pub abity: Option<Type>,
     pub params: Vec<FuncParam>,

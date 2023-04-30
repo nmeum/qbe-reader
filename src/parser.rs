@@ -293,7 +293,7 @@ fn data_item(input: &str) -> IResult<&str, DataItem> {
 pub fn funcdef(input: &str) -> IResult<&str, FuncDef> {
     map_res(
         tuple((
-            linkage,
+            many0(ws(linkage)),
             ws(tag("function")),
             opt(abity),
             ws(global),
@@ -680,7 +680,7 @@ mod tests {
             Ok((
                 "",
                 FuncDef {
-                    linkage: Linkage::Export,
+                    linkage: vec![Linkage::Export],
                     name: String::from("getone"),
                     abity: Some(Type::Base(BaseType::Word)),
                     params: vec![FuncParam::Regular(
