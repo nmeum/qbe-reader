@@ -19,13 +19,13 @@ pub enum Definition {
 
 fn parse_def(input: &str) -> IResult<&str, Definition> {
     alt((
-        map_res(parser::parse_typedef, |ty| -> Result<Definition, ()> {
+        map_res(parser::typedef, |ty| -> Result<Definition, ()> {
             Ok(Definition::Type(ty))
         }),
-        map_res(parser::parse_data, |data| -> Result<Definition, ()> {
+        map_res(parser::datadef, |data| -> Result<Definition, ()> {
             Ok(Definition::Data(data))
         }),
-        map_res(parser::parse_function, |func| -> Result<Definition, ()> {
+        map_res(parser::funcdef, |func| -> Result<Definition, ()> {
             Ok(Definition::Func(func))
         }),
     ))(input)

@@ -13,7 +13,7 @@ use nom::{
 };
 
 // STRING := '"' .... '"'
-fn parse_string(input: &str) -> IResult<&str, String> {
+fn string(input: &str) -> IResult<&str, String> {
     // TODO: Does qbe support escaping in strings?
     map_res(
         delimited(char('"'), recognize(many0(none_of("\""))), char('"')),
@@ -22,7 +22,7 @@ fn parse_string(input: &str) -> IResult<&str, String> {
 }
 
 // See https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n302
-fn parse_ident(input: &str) -> IResult<&str, String> {
+fn ident(input: &str) -> IResult<&str, String> {
     map_res(
         recognize(pair(
             alt((alpha1, tag("."), tag("_"))),
@@ -33,23 +33,23 @@ fn parse_ident(input: &str) -> IResult<&str, String> {
 }
 
 // See https://c9x.me/compile/doc/il-v1.1.html#Sigils
-fn parse_global(input: &str) -> IResult<&str, String> {
-    preceded(char('$'), parse_ident)(input)
+fn global(input: &str) -> IResult<&str, String> {
+    preceded(char('$'), ident)(input)
 }
-fn parse_userdef(input: &str) -> IResult<&str, String> {
-    preceded(char(':'), parse_ident)(input)
+fn userdef(input: &str) -> IResult<&str, String> {
+    preceded(char(':'), ident)(input)
 }
-fn parse_local(input: &str) -> IResult<&str, String> {
-    preceded(char('%'), parse_ident)(input)
+fn local(input: &str) -> IResult<&str, String> {
+    preceded(char('%'), ident)(input)
 }
-fn parse_label(input: &str) -> IResult<&str, String> {
-    preceded(char('@'), parse_ident)(input)
+fn label(input: &str) -> IResult<&str, String> {
+    preceded(char('@'), ident)(input)
 }
 
 ////////////////////////////////////////////////////////////////////////
 
 // BASETY := 'w' | 'l' | 's' | 'd'
-pub fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
+fn base_type(input: &str) -> IResult<&str, BaseType> {
     alt((
         bind(char('w'), BaseType::Word),
         bind(char('l'), BaseType::Long),
@@ -59,11 +59,11 @@ pub fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
 }
 
 // EXTTY := BASETY | 'b' | 'h'
-pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
+fn ext_type(input: &str) -> IResult<&str, ExtType> {
     alt((
         bind(char('b'), ExtType::Byte),
         bind(char('h'), ExtType::Halfword),
-        map_res(parse_base_type, |ty| -> Result<ExtType, ()> {
+        map_res(base_type, |ty| -> Result<ExtType, ()> {
             Ok(ExtType::Base(ty))
         }),
     ))(input)
@@ -74,7 +74,7 @@ pub fn parse_ext_type(input: &str) -> IResult<&str, ExtType> {
 //   | 's_' FP       # Single-precision float
 //   | 'd_' FP       # Double-precision float
 //   | $IDENT        # Global symbol
-pub fn parse_const(input: &str) -> IResult<&str, Const> {
+fn constant(input: &str) -> IResult<&str, Const> {
     // TODO: Ensure that floating point parser matches what QBE's parser does.
     // See: https://c9x.me/git/qbe.git/tree/parse.c?h=v1.1#n245
     alt((
@@ -95,22 +95,20 @@ pub fn parse_const(input: &str) -> IResult<&str, Const> {
             tag("d_"),
             map_res(double, |f| -> Result<Const, ()> { Ok(Const::DFP(f)) }),
         ),
-        map_res(parse_global, |s| -> Result<Const, ()> {
-            Ok(Const::Ident(s))
-        }),
+        map_res(global, |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }),
     ))(input)
 }
 
 // DYNCONST :=
 //     CONST
 //   | 'thread' $IDENT  # Thread-local symbol
-pub fn parse_dynconst(input: &str) -> IResult<&str, DynConst> {
+fn dynconstant(input: &str) -> IResult<&str, DynConst> {
     alt((
-        map_res(parse_const, |c| -> Result<DynConst, ()> {
+        map_res(constant, |c| -> Result<DynConst, ()> {
             Ok(DynConst::Const(c))
         }),
         map_res(
-            preceded(tag("thread"), ws(parse_global)),
+            preceded(tag("thread"), ws(global)),
             |i| -> Result<DynConst, ()> { Ok(DynConst::Thread(i)) },
         ),
     ))(input)
@@ -124,7 +122,7 @@ pub fn parse_dynconst(input: &str) -> IResult<&str, DynConst> {
 //
 // SECNAME  := '"' .... '"'
 // SECFLAGS := '"' .... '"'
-pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
+fn _linkage(input: &str) -> IResult<&str, Linkage> {
     alt((
         map_res(tag("export"), |_| -> Result<Linkage, ()> {
             Ok(Linkage::Export)
@@ -133,7 +131,7 @@ pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
             Ok(Linkage::Thread)
         }),
         map_res(
-            tuple((tag("section"), ws(parse_string), opt(parse_string))),
+            tuple((tag("section"), ws(string), opt(string))),
             |(_, secname, secflags)| -> Result<Linkage, ()> {
                 Ok(Linkage::Section(secname, secflags))
             },
@@ -142,13 +140,13 @@ pub fn _parse_linkage(input: &str) -> IResult<&str, Linkage> {
 }
 
 // Parse linkage terminated with one or more newline characters.
-pub fn parse_linkage(input: &str) -> IResult<&str, Linkage> {
-    terminated(ws(_parse_linkage), newline0)(input)
+fn linkage(input: &str) -> IResult<&str, Linkage> {
+    terminated(ws(_linkage), newline0)(input)
 }
 
 // TYPEDEF := REGTY | OPAQUETY
-pub fn parse_typedef(input: &str) -> IResult<&str, TypeDef> {
-    alt((parse_regty, parse_opaque))(input)
+pub fn typedef(input: &str) -> IResult<&str, TypeDef> {
+    alt((regty, opaque))(input)
 }
 
 // REGTY :=
@@ -156,14 +154,14 @@ pub fn parse_typedef(input: &str) -> IResult<&str, TypeDef> {
 //     '{'
 //         ( SUBTY [NUMBER] ),
 //     '}'
-pub fn parse_regty(input: &str) -> IResult<&str, TypeDef> {
+fn regty(input: &str) -> IResult<&str, TypeDef> {
     map_res(
         tuple((
             tag("type"),
-            ws(parse_userdef),
+            ws(userdef),
             char('='),
             opt(preceded(ws(tag("align")), parse_u64)),
-            delimited(ws(char('{')), parse_members, ws(char('}'))),
+            delimited(ws(char('{')), members, ws(char('}'))),
         )),
         |(_, id, _, align, members)| -> Result<TypeDef, ()> {
             Ok(TypeDef {
@@ -175,36 +173,36 @@ pub fn parse_regty(input: &str) -> IResult<&str, TypeDef> {
 }
 
 // SUBTY := EXTTY | :IDENT
-pub fn parse_subty(input: &str) -> IResult<&str, SubType> {
+fn subty(input: &str) -> IResult<&str, SubType> {
     alt((
-        map_res(parse_ext_type, |ty| -> Result<SubType, ()> {
+        map_res(ext_type, |ty| -> Result<SubType, ()> {
             Ok(SubType::ExtType(ty))
         }),
-        map_res(parse_userdef, |id| -> Result<SubType, ()> {
+        map_res(userdef, |id| -> Result<SubType, ()> {
             Ok(SubType::UserDef(id))
         }),
     ))(input)
 }
 
 // MEMBERS := ( MEMBER ),
-pub fn parse_members(input: &str) -> IResult<&str, Vec<(SubType, u64)>> {
-    separated_list1(ws(char(',')), parse_member)(input)
+fn members(input: &str) -> IResult<&str, Vec<(SubType, u64)>> {
+    separated_list1(ws(char(',')), member)(input)
 }
 
 // MEMBER := SUBTY [NUMBER]
-pub fn parse_member(input: &str) -> IResult<&str, (SubType, u64)> {
+fn member(input: &str) -> IResult<&str, (SubType, u64)> {
     map_res(
-        pair(parse_subty, opt(ws(parse_u64))),
+        pair(subty, opt(ws(parse_u64))),
         |(ty, n)| -> Result<(SubType, u64), ()> { Ok((ty, n.unwrap_or(1))) },
     )(input)
 }
 
 // OPAQUETY := 'type' :IDENT '=' 'align' NUMBER '{' NUMBER '}'
-pub fn parse_opaque(input: &str) -> IResult<&str, TypeDef> {
+fn opaque(input: &str) -> IResult<&str, TypeDef> {
     map_res(
         tuple((
             tag("type"),
-            ws(parse_userdef),
+            ws(userdef),
             char('='),
             ws(tag("align")),
             parse_u64,
@@ -226,15 +224,15 @@ pub fn parse_opaque(input: &str) -> IResult<&str, TypeDef> {
 //         ( EXTTY DATAITEM+
 //         | 'z'   NUMBER ),
 //     '}'
-pub fn parse_data(input: &str) -> IResult<&str, DataDef> {
+pub fn datadef(input: &str) -> IResult<&str, DataDef> {
     map_res(
         tuple((
-            many0(ws(parse_linkage)),
+            many0(ws(linkage)),
             ws(tag("data")),
-            parse_global,
+            global,
             ws(char('=')),
             opt(preceded(tag("align"), parse_u64)),
-            delimited(ws(char('{')), parse_data_objs, char('}')),
+            delimited(ws(char('{')), data_objs, char('}')),
         )),
         |(lnk, _, ident, _, align, objs)| -> Result<DataDef, ()> {
             Ok(DataDef {
@@ -248,16 +246,16 @@ pub fn parse_data(input: &str) -> IResult<&str, DataDef> {
 }
 
 // DATAOBJS := ( DATAOBJ ),
-pub fn parse_data_objs(input: &str) -> IResult<&str, Vec<DataObj>> {
-    separated_list1(ws(char(',')), parse_data_obj)(input)
+fn data_objs(input: &str) -> IResult<&str, Vec<DataObj>> {
+    separated_list1(ws(char(',')), data_obj)(input)
 }
 
 // DATAOBJ := EXTTY DATAITEM+
 //          | 'z'   NUMBER
-pub fn parse_data_obj(input: &str) -> IResult<&str, DataObj> {
+fn data_obj(input: &str) -> IResult<&str, DataObj> {
     alt((
         map_res(
-            pair(parse_ext_type, many1(ws(parse_data_item))),
+            pair(ext_type, many1(ws(data_item))),
             |(ty, items)| -> Result<DataObj, ()> { Ok(DataObj::DataItem(ty, items)) },
         ),
         map_res(
@@ -271,19 +269,16 @@ pub fn parse_data_obj(input: &str) -> IResult<&str, DataObj> {
 //     $IDENT ['+' NUMBER]  # Symbol and offset
 //   |  '"' ... '"'         # String
 //   |  CONST               # Constant
-pub fn parse_data_item(input: &str) -> IResult<&str, DataItem> {
+fn data_item(input: &str) -> IResult<&str, DataItem> {
     alt((
         map_res(
-            pair(
-                parse_global,
-                opt(preceded(opt(ws(char('+'))), ws(parse_u64))),
-            ),
+            pair(global, opt(preceded(opt(ws(char('+'))), ws(parse_u64)))),
             |(ident, off)| -> Result<DataItem, ()> { Ok(DataItem::Symbol(ident, off)) },
         ),
-        map_res(parse_string, |s| -> Result<DataItem, ()> {
+        map_res(string, |s| -> Result<DataItem, ()> {
             Ok(DataItem::String(s))
         }),
-        map_res(parse_const, |c| -> Result<DataItem, ()> {
+        map_res(constant, |c| -> Result<DataItem, ()> {
             Ok(DataItem::Const(c))
         }),
     ))(input)
@@ -295,16 +290,16 @@ pub fn parse_data_item(input: &str) -> IResult<&str, DataItem> {
 //     '{' NL
 //         BODY
 //     '}'
-pub fn parse_function(input: &str) -> IResult<&str, FuncDef> {
+pub fn funcdef(input: &str) -> IResult<&str, FuncDef> {
     map_res(
         tuple((
-            parse_linkage,
+            linkage,
             ws(tag("function")),
-            opt(parse_abity),
-            ws(parse_global),
-            delimited(char('('), ws(parse_params), char(')')),
+            opt(abity),
+            ws(global),
+            delimited(char('('), ws(params), char(')')),
             ws(newline0),
-            delimited(ws(char('{')), preceded(newline, parse_body), char('}')),
+            delimited(ws(char('{')), preceded(newline, body), char('}')),
         )),
         |(lnk, _, ret, id, params, _, body)| -> Result<FuncDef, ()> {
             Ok(FuncDef {
@@ -319,7 +314,7 @@ pub fn parse_function(input: &str) -> IResult<&str, FuncDef> {
 }
 
 // SUBWTY := 'sb' | 'ub' | 'sh' | 'uh'
-pub fn parse_sub_word(input: &str) -> IResult<&str, SubWordType> {
+fn sub_word(input: &str) -> IResult<&str, SubWordType> {
     alt((
         bind(tag("sb"), SubWordType::SignedByte),
         bind(tag("ub"), SubWordType::UnsignedHalf),
@@ -329,17 +324,13 @@ pub fn parse_sub_word(input: &str) -> IResult<&str, SubWordType> {
 }
 
 // ABITY  := BASETY | SUBWTY | :IDENT
-pub fn parse_abity(input: &str) -> IResult<&str, Type> {
+fn abity(input: &str) -> IResult<&str, Type> {
     alt((
-        map_res(parse_base_type, |ty| -> Result<Type, ()> {
-            Ok(Type::Base(ty))
-        }),
-        map_res(parse_sub_word, |ty| -> Result<Type, ()> {
+        map_res(base_type, |ty| -> Result<Type, ()> { Ok(Type::Base(ty)) }),
+        map_res(sub_word, |ty| -> Result<Type, ()> {
             Ok(Type::SubWordType(ty))
         }),
-        map_res(parse_userdef, |str| -> Result<Type, ()> {
-            Ok(Type::Ident(str))
-        }),
+        map_res(userdef, |str| -> Result<Type, ()> { Ok(Type::Ident(str)) }),
     ))(input)
 }
 
@@ -347,14 +338,14 @@ pub fn parse_abity(input: &str) -> IResult<&str, Type> {
 //     ABITY %IDENT  # Regular parameter
 //   | 'env' %IDENT  # Environment parameter (first)
 //   | '...'         # Variadic marker (last)
-pub fn parse_param(input: &str) -> IResult<&str, FuncParam> {
+fn param(input: &str) -> IResult<&str, FuncParam> {
     alt((
         map_res(
-            pair(parse_abity, ws(parse_local)),
+            pair(abity, ws(local)),
             |(ty, id)| -> Result<FuncParam, ()> { Ok(FuncParam::Regular(ty, id)) },
         ),
         map_res(
-            preceded(tag("env"), ws(parse_local)),
+            preceded(tag("env"), ws(local)),
             |id| -> Result<FuncParam, ()> { Ok(FuncParam::Env(id)) },
         ),
         map_res(tag("..."), |_| -> Result<FuncParam, ()> {
@@ -364,13 +355,13 @@ pub fn parse_param(input: &str) -> IResult<&str, FuncParam> {
 }
 
 // PARAMS = (PARAM),
-pub fn parse_params(input: &str) -> IResult<&str, Vec<FuncParam>> {
-    separated_list1(ws(char(',')), parse_param)(input)
+fn params(input: &str) -> IResult<&str, Vec<FuncParam>> {
+    separated_list1(ws(char(',')), param)(input)
 }
 
 // BODY = BLOCK+
-pub fn parse_body(input: &str) -> IResult<&str, Vec<Block>> {
-    many1(parse_block)(input)
+fn body(input: &str) -> IResult<&str, Vec<Block>> {
+    many1(block)(input)
 }
 
 // BLOCK :=
@@ -378,11 +369,11 @@ pub fn parse_body(input: &str) -> IResult<&str, Vec<Block>> {
 //    ( PHI NL )*   # Phi instructions
 //    ( INST NL )*  # Regular instructions
 //    JUMP NL       # Jump or return
-pub fn parse_block(input: &str) -> IResult<&str, Block> {
+fn block(input: &str) -> IResult<&str, Block> {
     map_res(
         tuple((
-            terminated(parse_label, ws(newline)),
-            terminated(parse_jump, ws(newline)),
+            terminated(label, ws(newline)),
+            terminated(jump, ws(newline)),
         )),
         |(label, jump)| -> Result<Block, ()> {
             Ok(Block {
@@ -398,12 +389,11 @@ pub fn parse_block(input: &str) -> IResult<&str, Block> {
 //   | 'jnz' VAL, @IDENT, @IDENT  # Conditional
 //   | 'ret' [VAL]                # Return
 //   | 'hlt'                      # Termination
-pub fn parse_jump(input: &str) -> IResult<&str, Instr> {
+fn jump(input: &str) -> IResult<&str, Instr> {
     alt((
-        map_res(
-            preceded(tag("jmp"), parse_label),
-            |l| -> Result<Instr, ()> { Ok(Instr::Jump(l)) },
-        ),
+        map_res(preceded(tag("jmp"), label), |l| -> Result<Instr, ()> {
+            Ok(Instr::Jump(l))
+        }),
         map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) }),
     ))(input)
 }
@@ -413,24 +403,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn string() {
-        assert_eq!(parse_string("\"foobar\""), Ok(("", String::from("foobar"))));
-        assert_eq!(parse_string("\"\""), Ok(("", String::from(""))));
+    fn test_string() {
+        assert_eq!(string("\"foobar\""), Ok(("", String::from("foobar"))));
+        assert_eq!(string("\"\""), Ok(("", String::from(""))));
     }
 
     #[test]
-    fn linkage() {
+    fn test_linkage() {
         // Primitive linkage directives
-        assert_eq!(parse_linkage("export"), Ok(("", Linkage::Export)));
-        assert_eq!(parse_linkage("thread"), Ok(("", Linkage::Thread)));
+        assert_eq!(linkage("export"), Ok(("", Linkage::Export)));
+        assert_eq!(linkage("thread"), Ok(("", Linkage::Thread)));
 
         // Section linkage directive
         assert_eq!(
-            parse_linkage("section \"foobar\"\n"),
+            linkage("section \"foobar\"\n"),
             Ok(("", Linkage::Section(String::from("foobar"), None)))
         );
         assert_eq!(
-            parse_linkage(" section \"foo\"	\"bar\" \n"),
+            linkage(" section \"foo\"	\"bar\" \n"),
             Ok((
                 "",
                 Linkage::Section(String::from("foo"), Some(String::from("bar")))
@@ -439,82 +429,76 @@ mod tests {
     }
 
     #[test]
-    fn types() {
+    fn test_types() {
         // Base types
-        assert_eq!(parse_base_type("w"), Ok(("", BaseType::Word)));
-        assert_eq!(parse_base_type("l"), Ok(("", BaseType::Long)));
-        assert_eq!(parse_base_type("s"), Ok(("", BaseType::Single)));
-        assert_eq!(parse_base_type("d"), Ok(("", BaseType::Double)));
+        assert_eq!(base_type("w"), Ok(("", BaseType::Word)));
+        assert_eq!(base_type("l"), Ok(("", BaseType::Long)));
+        assert_eq!(base_type("s"), Ok(("", BaseType::Single)));
+        assert_eq!(base_type("d"), Ok(("", BaseType::Double)));
 
         // Extented types
-        assert_eq!(
-            parse_ext_type("s"),
-            Ok(("", ExtType::Base(BaseType::Single)))
-        );
-        assert_eq!(parse_ext_type("h"), Ok(("", ExtType::Halfword)));
+        assert_eq!(ext_type("s"), Ok(("", ExtType::Base(BaseType::Single))));
+        assert_eq!(ext_type("h"), Ok(("", ExtType::Halfword)));
     }
 
     #[test]
-    fn ident() {
-        assert_eq!(parse_ident("_foo"), Ok(("", String::from("_foo"))));
-        assert_eq!(parse_ident("foobar"), Ok(("", String::from("foobar"))));
-        assert_eq!(
-            parse_ident("foo$_.23__"),
-            Ok(("", String::from("foo$_.23__")))
-        );
+    fn test_ident() {
+        assert_eq!(ident("_foo"), Ok(("", String::from("_foo"))));
+        assert_eq!(ident("foobar"), Ok(("", String::from("foobar"))));
+        assert_eq!(ident("foo$_.23__"), Ok(("", String::from("foo$_.23__"))));
     }
 
     #[test]
-    fn constant() {
+    fn test_constant() {
         // Number
-        assert_eq!(parse_const("23"), Ok(("", Const::Number(23))));
-        assert_eq!(parse_const("-5"), Ok(("", Const::Number(-5))));
+        assert_eq!(constant("23"), Ok(("", Const::Number(23))));
+        assert_eq!(constant("-5"), Ok(("", Const::Number(-5))));
 
         // Identifier
         assert_eq!(
-            parse_const("$foobar"),
+            constant("$foobar"),
             Ok(("", Const::Ident(String::from("foobar"))))
         );
         assert_eq!(
-            parse_const("$_fo$$r"),
+            constant("$_fo$$r"),
             Ok(("", Const::Ident(String::from("_fo$$r"))))
         );
 
         // Float
-        assert_eq!(parse_const("s_23.42"), Ok(("", Const::SFP(23.42))));
-        assert_eq!(parse_const("s_23."), Ok(("", Const::SFP(23.))));
+        assert_eq!(constant("s_23.42"), Ok(("", Const::SFP(23.42))));
+        assert_eq!(constant("s_23."), Ok(("", Const::SFP(23.))));
 
         // Double
-        assert_eq!(parse_const("d_11e-1"), Ok(("", Const::DFP(1.1))));
+        assert_eq!(constant("d_11e-1"), Ok(("", Const::DFP(1.1))));
     }
 
     #[test]
-    fn dynamic_constant() {
+    fn test_dynconst() {
         // Constant
         assert_eq!(
-            parse_dynconst("-   23"),
+            dynconstant("-   23"),
             Ok(("", DynConst::Const(Const::Number(-23))))
         );
         assert_eq!(
-            parse_dynconst("234223422342"),
+            dynconstant("234223422342"),
             Ok(("", DynConst::Const(Const::Number(234223422342))))
         );
 
         // Thread-local symbol
         assert_eq!(
-            parse_dynconst("thread $foo"),
+            dynconstant("thread $foo"),
             Ok(("", DynConst::Thread(String::from("foo"))))
         );
         assert_eq!(
-            parse_dynconst("thread	$foo"),
+            dynconstant("thread	$foo"),
             Ok(("", DynConst::Thread(String::from("foo"))))
         );
     }
 
     #[test]
-    fn members() {
+    fn test_members() {
         assert_eq!(
-            parse_members("s 23"),
+            members("s 23"),
             Ok((
                 "",
                 vec![(SubType::ExtType(ExtType::Base(BaseType::Single)), 23)]
@@ -522,7 +506,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_members("s, s, d, d"),
+            members("s, s, d, d"),
             Ok((
                 "",
                 vec![
@@ -536,10 +520,10 @@ mod tests {
     }
 
     #[test]
-    fn aggregate_types() {
+    fn test_aggregate() {
         // TODO: Expand
         assert_eq!(
-            parse_typedef("type :fourfloats = { s, s, d, d }"),
+            typedef("type :fourfloats = { s, s, d, d }"),
             Ok((
                 "",
                 TypeDef {
@@ -558,7 +542,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_typedef("type :opaque = align 16 { 32 }"),
+            typedef("type :opaque = align 16 { 32 }"),
             Ok((
                 "",
                 TypeDef {
@@ -570,74 +554,71 @@ mod tests {
     }
 
     #[test]
-    fn data_item() {
+    fn test_dataitm() {
         // Symbolic with and without offset
         assert_eq!(
-            parse_data_item("$foo"),
+            data_item("$foo"),
             Ok(("", DataItem::Symbol(String::from("foo"), None)))
         );
         assert_eq!(
-            parse_data_item("$foo +23"),
+            data_item("$foo +23"),
             Ok(("", DataItem::Symbol(String::from("foo"), Some(23))))
         );
         assert_eq!(
-            parse_data_item("$foo   +  23"),
+            data_item("$foo   +  23"),
             Ok(("", DataItem::Symbol(String::from("foo"), Some(23))))
         );
 
         // String
         assert_eq!(
-            parse_data_item("\"test\""),
+            data_item("\"test\""),
             Ok(("", DataItem::String(String::from("test"))))
         );
         assert_eq!(
-            parse_data_item("\" f o o\""),
+            data_item("\" f o o\""),
             Ok(("", DataItem::String(String::from(" f o o"))))
         );
 
         // Constant
         assert_eq!(
-            parse_data_item("23"),
+            data_item("23"),
             Ok(("", DataItem::Const(Const::Number(23))))
         );
         assert_eq!(
-            parse_data_item("s_42"),
+            data_item("s_42"),
             Ok(("", DataItem::Const(Const::SFP(42.))))
         );
     }
 
     #[test]
-    fn data_object() {
+    fn test_dataobj() {
         // TODO: Expand
         assert_eq!(
-            parse_data_obj("h 23"),
+            data_obj("h 23"),
             Ok((
                 "",
                 DataObj::DataItem(ExtType::Halfword, vec![DataItem::Const(Const::Number(23))])
             ))
         );
-        assert_eq!(parse_data_obj("z   42"), Ok(("", DataObj::ZeroFill(42))));
+        assert_eq!(data_obj("z   42"), Ok(("", DataObj::ZeroFill(42))));
     }
 
     #[test]
-    fn data_objects() {
+    fn test_dataobjs() {
         // TODO: Expand
+        assert_eq!(data_objs("z 1337"), Ok(("", vec![DataObj::ZeroFill(1337)])));
         assert_eq!(
-            parse_data_objs("z 1337"),
-            Ok(("", vec![DataObj::ZeroFill(1337)]))
-        );
-        assert_eq!(
-            parse_data_objs("z 42, z 10"),
+            data_objs("z 42, z 10"),
             Ok(("", vec![DataObj::ZeroFill(42), DataObj::ZeroFill(10)]))
         );
     }
 
     #[test]
-    fn data_definition() {
+    fn test_datadef() {
         let input = "data $b = { z 1000 }";
         let items = vec![DataObj::ZeroFill(1000)];
         assert_eq!(
-            parse_data(input),
+            datadef(input),
             Ok((
                 "",
                 DataDef {
@@ -664,7 +645,7 @@ mod tests {
             ),
         ];
         assert_eq!(
-            parse_data(input),
+            datadef(input),
             Ok((
                 "",
                 DataDef {
@@ -678,9 +659,9 @@ mod tests {
     }
 
     #[test]
-    fn block() {
+    fn test_block() {
         assert_eq!(
-            parse_block("@start\nhlt\n"),
+            block("@start\nhlt\n"),
             Ok((
                 "",
                 Block {
@@ -692,10 +673,10 @@ mod tests {
     }
 
     #[test]
-    fn function_definition() {
+    fn test_funcdef() {
         let input = "export function w $getone(:one %p) {\n@start\nhlt\n}";
         assert_eq!(
-            parse_function(input),
+            funcdef(input),
             Ok((
                 "",
                 FuncDef {
