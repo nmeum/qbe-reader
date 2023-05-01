@@ -8,7 +8,6 @@ use nom::{
 };
 
 use crate::error::Error;
-use crate::util::newline;
 use std::convert;
 use std::fs::File;
 use std::io::Read;
@@ -38,7 +37,7 @@ fn parse_def(input: &str) -> IResult<&str, Definition> {
 fn parse_defs(input: &str) -> IResult<&str, Vec<Definition>> {
     terminated(
         separated_list1(util::ws(util::newline0), parse_def),
-        newline,
+        util::newline0,
     )(input)
 }
 

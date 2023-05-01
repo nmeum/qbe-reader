@@ -299,7 +299,7 @@ pub fn funcdef(input: &str) -> IResult<&str, FuncDef> {
             ws(global),
             delimited(char('('), ws(params), char(')')),
             ws(newline0),
-            delimited(ws(char('{')), preceded(newline, body), char('}')),
+            delimited(ws(char('{')), preceded(newline1, body), char('}')),
         )),
         |(lnk, _, ret, id, params, _, body)| -> Result<FuncDef, ()> {
             Ok(FuncDef {
@@ -372,8 +372,8 @@ fn body(input: &str) -> IResult<&str, Vec<Block>> {
 fn block(input: &str) -> IResult<&str, Block> {
     map_res(
         tuple((
-            terminated(label, ws(newline)),
-            terminated(jump, ws(newline)),
+            terminated(label, ws(newline1)),
+            terminated(jump, ws(newline1)),
         )),
         |(label, jump)| -> Result<Block, ()> {
             Ok(Block {
