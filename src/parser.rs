@@ -339,6 +339,8 @@ fn abity(input: &str) -> IResult<&str, Type> {
 //   | 'env' %IDENT  # Environment parameter (first)
 //   | '...'         # Variadic marker (last)
 fn param(input: &str) -> IResult<&str, FuncParam> {
+    // TODO: Ensure that env is the first parameter
+    // TODO: Ensure that variadic marker is the last parameter
     alt((
         map_res(
             pair(abity, ws(local)),
