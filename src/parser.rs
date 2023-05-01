@@ -389,20 +389,22 @@ fn block(input: &str) -> IResult<&str, Block> {
 //   | 'jnz' VAL, @IDENT, @IDENT  # Conditional
 //   | 'ret' [VAL]                # Return
 //   | 'hlt'                      # Termination
-fn jump(input: &str) -> IResult<&str, Instr> {
+fn jump(input: &str) -> IResult<&str, JumpInstr> {
     alt((
-        map_res(preceded(tag("jmp"), label), |l| -> Result<Instr, ()> {
-            Ok(Instr::Jump(l))
+        map_res(preceded(tag("jmp"), label), |l| -> Result<JumpInstr, ()> {
+            Ok(JumpInstr::Jump(l))
         }),
         map_res(
             tuple((tag("jnz"), ws(value), label, ws(label))),
-            |(_, v, l1, l2)| -> Result<Instr, ()> { Ok(Instr::Jnz(v, l1, l2)) },
+            |(_, v, l1, l2)| -> Result<JumpInstr, ()> { Ok(JumpInstr::Jnz(v, l1, l2)) },
         ),
         map_res(
             preceded(tag("ret"), opt(ws(value))),
-            |v| -> Result<Instr, ()> { Ok(Instr::Return(v)) },
+            |v| -> Result<JumpInstr, ()> { Ok(JumpInstr::Return(v)) },
         ),
-        map_res(tag("hlt"), |_| -> Result<Instr, ()> { Ok(Instr::Halt) }),
+        map_res(tag("hlt"), |_| -> Result<JumpInstr, ()> {
+            Ok(JumpInstr::Halt)
+        }),
     ))(input)
 }
 
@@ -689,7 +691,7 @@ mod tests {
                 "",
                 Block {
                     label: String::from("start"),
-                    jump: Instr::Halt,
+                    jump: JumpInstr::Halt,
                 }
             ))
         );
@@ -712,7 +714,7 @@ mod tests {
                     )],
                     body: vec![Block {
                         label: String::from("start"),
-                        jump: Instr::Halt,
+                        jump: JumpInstr::Halt,
                     }]
                 }
             ))

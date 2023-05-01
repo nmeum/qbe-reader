@@ -107,7 +107,7 @@ pub enum FuncParam {
 #[derive(Debug, PartialEq)]
 pub struct Block {
     pub label: String,
-    pub jump: Instr,
+    pub jump: JumpInstr,
 }
 
 #[derive(Debug, PartialEq)]
@@ -118,7 +118,7 @@ pub enum Value {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Instr {
+pub enum JumpInstr {
     Jump(String),               // jmp
     Jnz(Value, String, String), // jnz
     Return(Option<Value>),      // ret
