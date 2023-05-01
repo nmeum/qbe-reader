@@ -107,6 +107,7 @@ pub enum FuncParam {
 #[derive(Debug, PartialEq)]
 pub struct Block {
     pub label: String,
+    pub inst: Vec<Statement>,
     pub jump: JumpInstr,
 }
 
@@ -123,4 +124,22 @@ pub enum JumpInstr {
     Jnz(Value, String, String), // jnz
     Return(Option<Value>),      // ret
     Halt,                       // hlt
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Instr {
+    // Arithmetic and Bits
+    Add(Value, Value),
+    // Memory
+    //StoreWord(Value, Value),
+    //LoadUWord(Value, Value),
+
+    // Comparisons
+    //Ult(Value, Value),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Statement {
+    Assign(String, BaseType, Instr),
+    //Volatile(Instr),
 }

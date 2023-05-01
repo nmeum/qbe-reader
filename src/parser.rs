@@ -373,11 +373,14 @@ fn block(input: &str) -> IResult<&str, Block> {
     map_res(
         tuple((
             terminated(label, ws(newline1)),
+            // TODO: Phi instructions
+            many0(terminated(stat, ws(newline1))),
             terminated(jump, ws(newline1)),
         )),
-        |(label, jump)| -> Result<Block, ()> {
+        |(label, inst, jump)| -> Result<Block, ()> {
             Ok(Block {
                 label: label,
+                inst: inst,
                 jump: jump,
             })
         },
@@ -421,6 +424,26 @@ fn value(input: &str) -> IResult<&str, Value> {
             Ok(Value::Const(cnst))
         }),
     ))(input)
+}
+
+// See https://c9x.me/compile/doc/il-v1.1.html#Instructions
+fn instr(input: &str) -> IResult<&str, Instr> {
+    alt((map_res(
+        tuple((tag("add"), ws(value), char(','), ws(value))),
+        |(_, v1, _, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
+    ),))(input)
+}
+
+// TODO: This is not documented in the BNF grammar.
+fn assign(input: &str) -> IResult<&str, Statement> {
+    map_res(
+        tuple((local, ws(char('=')), base_type, ws(instr))),
+        |(dest, _, ty, inst)| -> Result<Statement, ()> { Ok(Statement::Assign(dest, ty, inst)) },
+    )(input)
+}
+
+fn stat(input: &str) -> IResult<&str, Statement> {
+    assign(input)
 }
 
 #[cfg(test)]
@@ -691,8 +714,27 @@ mod tests {
                 "",
                 Block {
                     label: String::from("start"),
+                    inst: vec![],
                     jump: JumpInstr::Halt,
                 }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_assign() {
+        assert_eq!(
+            assign("%c =w add %a, %b"),
+            Ok((
+                "",
+                Statement::Assign(
+                    String::from("c"),
+                    BaseType::Word,
+                    Instr::Add(
+                        Value::LocalVar(String::from("a")),
+                        Value::LocalVar(String::from("b"))
+                    )
+                )
             ))
         );
     }
@@ -714,6 +756,7 @@ mod tests {
                     )],
                     body: vec![Block {
                         label: String::from("start"),
+                        inst: vec![],
                         jump: JumpInstr::Halt,
                     }]
                 }
