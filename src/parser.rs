@@ -95,7 +95,7 @@ fn constant(input: &str) -> IResult<&str, Const> {
             tag("d_"),
             map_res(double, |f| -> Result<Const, ()> { Ok(Const::DFP(f)) }),
         ),
-        map_res(global, |s| -> Result<Const, ()> { Ok(Const::Ident(s)) }),
+        map_res(global, |s| -> Result<Const, ()> { Ok(Const::Global(s)) }),
     ))(input)
 }
 
@@ -507,11 +507,11 @@ mod tests {
         // Identifier
         assert_eq!(
             constant("$foobar"),
-            Ok(("", Const::Ident(String::from("foobar"))))
+            Ok(("", Const::Global(String::from("foobar"))))
         );
         assert_eq!(
             constant("$_fo$$r"),
-            Ok(("", Const::Ident(String::from("_fo$$r"))))
+            Ok(("", Const::Global(String::from("_fo$$r"))))
         );
 
         // Float

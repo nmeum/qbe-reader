@@ -1,6 +1,6 @@
 mod error;
 mod parser;
-mod types;
+pub mod types;
 mod util;
 
 use nom::{

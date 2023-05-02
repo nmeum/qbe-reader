@@ -39,7 +39,7 @@ pub enum Const {
     Number(i64),
     SFP(f32),
     DFP(f64),
-    Ident(String),
+    Global(String),
 }
 
 #[derive(Debug, PartialEq)]
