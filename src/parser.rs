@@ -419,9 +419,6 @@ fn value(input: &str) -> IResult<&str, Value> {
         map_res(local, |var| -> Result<Value, ()> {
             Ok(Value::LocalVar(var))
         }),
-        map_res(global, |var| -> Result<Value, ()> {
-            Ok(Value::GlobalVar(var))
-        }),
         map_res(dynconstant, |cnst| -> Result<Value, ()> {
             Ok(Value::Const(cnst))
         }),

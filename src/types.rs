@@ -114,7 +114,6 @@ pub struct Block {
 #[derive(Debug, PartialEq)]
 pub enum Value {
     LocalVar(String),
-    GlobalVar(String),
     Const(DynConst),
 }
 
