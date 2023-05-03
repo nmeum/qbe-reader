@@ -398,12 +398,20 @@ fn block(input: &str) -> IResult<&str, Block> {
 //   | 'hlt'                      # Termination
 fn jump(input: &str) -> IResult<&str, JumpInstr> {
     alt((
-        map_res(preceded(tag("jmp"), label), |l| -> Result<JumpInstr, ()> {
-            Ok(JumpInstr::Jump(l))
-        }),
         map_res(
-            tuple((tag("jnz"), ws(value), label, ws(label))),
-            |(_, v, l1, l2)| -> Result<JumpInstr, ()> { Ok(JumpInstr::Jnz(v, l1, l2)) },
+            preceded(tag("jmp"), ws(label)),
+            |l| -> Result<JumpInstr, ()> { Ok(JumpInstr::Jump(l)) },
+        ),
+        map_res(
+            tuple((
+                tag("jnz"),
+                ws(value),
+                char(','),
+                ws(label),
+                char(','),
+                ws(label),
+            )),
+            |(_, v, _, l1, _, l2)| -> Result<JumpInstr, ()> { Ok(JumpInstr::Jnz(v, l1, l2)) },
         ),
         map_res(
             preceded(tag("ret"), opt(ws(value))),
