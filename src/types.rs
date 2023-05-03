@@ -31,7 +31,7 @@ pub enum SubType {
 pub enum Type {
     Base(BaseType),
     SubWordType(SubWordType),
-    Ident(String),
+    UserDef(String),
 }
 
 #[derive(Debug, PartialEq)]

@@ -330,7 +330,9 @@ fn abity(input: &str) -> IResult<&str, Type> {
         map_res(sub_word, |ty| -> Result<Type, ()> {
             Ok(Type::SubWordType(ty))
         }),
-        map_res(userdef, |str| -> Result<Type, ()> { Ok(Type::Ident(str)) }),
+        map_res(userdef, |str| -> Result<Type, ()> {
+            Ok(Type::UserDef(str))
+        }),
     ))(input)
 }
 
@@ -750,7 +752,7 @@ mod tests {
                     name: String::from("getone"),
                     abity: Some(Type::Base(BaseType::Word)),
                     params: vec![FuncParam::Regular(
-                        Type::Ident(String::from("one")),
+                        Type::UserDef(String::from("one")),
                         String::from("p")
                     )],
                     body: vec![Block {
