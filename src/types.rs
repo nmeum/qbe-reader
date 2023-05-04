@@ -129,6 +129,8 @@ pub enum JumpInstr {
 pub enum Instr {
     // Arithmetic and Bits
     Add(Value, Value),
+    Sub(Value, Value),
+    Mul(Value, Value),
     // Memory
     //StoreWord(Value, Value),
     //LoadUWord(Value, Value),

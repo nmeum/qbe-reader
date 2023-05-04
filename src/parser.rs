@@ -449,10 +449,20 @@ where
 
 // See https://c9x.me/compile/doc/il-v1.1.html#Instructions
 fn instr(input: &str) -> IResult<&str, Instr> {
-    alt((map_res(
-        instr_two_args("add", value, value),
-        |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
-    ),))(input)
+    alt((
+        map_res(
+            instr_two_args("add", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("sub", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Sub(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("mul", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
+        ),
+    ))(input)
 }
 
 // TODO: This is not documented in the BNF grammar.
