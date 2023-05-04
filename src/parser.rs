@@ -6,6 +6,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, none_of},
     combinator::{map_res, opt, recognize},
+    error::{FromExternalError, ParseError},
     multi::{many0, many0_count, many1, separated_list1},
     number::complete::{double, float},
     sequence::{delimited, pair, preceded, terminated, tuple},
@@ -435,11 +436,22 @@ fn value(input: &str) -> IResult<&str, Value> {
     ))(input)
 }
 
+fn instr_two_args<'a, F: 'a, O, E: ParseError<&'a str> + FromExternalError<&'a str, ()>>(
+    name: &'a str,
+    arg1: F,
+    arg2: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, (O, O), E>
+where
+    F: Fn(&'a str) -> IResult<&'a str, O, E>,
+{
+    pair(preceded(tag(name), ws(arg1)), preceded(char(','), ws(arg2)))
+}
+
 // See https://c9x.me/compile/doc/il-v1.1.html#Instructions
 fn instr(input: &str) -> IResult<&str, Instr> {
     alt((map_res(
-        tuple((tag("add"), ws(value), char(','), ws(value))),
-        |(_, v1, _, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
+        instr_two_args("add", value, value),
+        |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
     ),))(input)
 }
 
