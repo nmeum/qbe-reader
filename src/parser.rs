@@ -462,6 +462,10 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             instr_two_args("mul", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
         ),
+        map_res(
+            preceded(ws(tag("loadw")), value),
+            |v| -> Result<Instr, ()> { Ok(Instr::LoadWord(v)) },
+        ),
     ))(input)
 }
 

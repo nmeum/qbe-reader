@@ -131,9 +131,9 @@ pub enum Instr {
     Add(Value, Value),
     Sub(Value, Value),
     Mul(Value, Value),
+
     // Memory
-    //StoreWord(Value, Value),
-    //LoadUWord(Value, Value),
+    LoadWord(Value),
 
     // Comparisons
     //Ult(Value, Value),
