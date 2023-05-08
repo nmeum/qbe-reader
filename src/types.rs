@@ -104,6 +104,16 @@ pub enum FuncParam {
     Variadic,
 }
 
+impl FuncParam {
+    pub fn get_name(&self) -> Option<&str> {
+        match self {
+            FuncParam::Regular(_, n) => Some(n),
+            FuncParam::Env(n) => Some(n),
+            FuncParam::Variadic => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Block {
     pub label: String,
