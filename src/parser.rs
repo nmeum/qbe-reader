@@ -287,7 +287,7 @@ fn data_item(input: &str) -> IResult<&str, DataItem> {
 
 // FUNCDEF :=
 //     LINKAGE*
-//     'function' [ABITY] $IDENT '(' (PARAM), ')' [NL]
+//     'function' [ABITY] $IDENT PARAMS [NL]
 //     '{' NL
 //         BODY
 //     '}'
@@ -298,7 +298,7 @@ pub fn funcdef(input: &str) -> IResult<&str, FuncDef> {
             ws(tag("function")),
             opt(abity),
             ws(global),
-            delimited(char('('), ws(params), char(')')),
+            params,
             ws(newline0),
             delimited(ws(char('{')), preceded(newline1, body), char('}')),
         )),
@@ -359,9 +359,12 @@ fn param(input: &str) -> IResult<&str, FuncParam> {
     ))(input)
 }
 
-// PARAMS = (PARAM),
-fn params(input: &str) -> IResult<&str, Vec<FuncParam>> {
+// PARAMS = '(' (PARAM), ')'
+fn _params(input: &str) -> IResult<&str, Vec<FuncParam>> {
     separated_list1(ws(char(',')), param)(input)
+}
+fn params(input: &str) -> IResult<&str, Vec<FuncParam>> {
+    delimited(char('('), ws(_params), char(')'))(input)
 }
 
 // BODY = BLOCK+
@@ -470,15 +473,28 @@ fn instr(input: &str) -> IResult<&str, Instr> {
 }
 
 // TODO: This is not documented in the BNF grammar.
-fn assign(input: &str) -> IResult<&str, Statement> {
-    map_res(
-        tuple((local, ws(char('=')), base_type, ws(instr))),
-        |(dest, _, ty, inst)| -> Result<Statement, ()> { Ok(Statement::Assign(dest, ty, inst)) },
-    )(input)
-}
-
 fn stat(input: &str) -> IResult<&str, Statement> {
-    assign(input)
+    alt((
+        map_res(
+            tuple((local, ws(char('=')), base_type, ws(instr))),
+            |(dest, _, ty, inst)| -> Result<Statement, ()> {
+                Ok(Statement::Assign(dest, ty, inst))
+            },
+        ),
+        map_res(
+            tuple((
+                local,
+                ws(char('=')),
+                abity,
+                ws(tag("call")),
+                global,
+                ws(params),
+            )),
+            |(dest, _, ty, _, fname, params)| -> Result<Statement, ()> {
+                Ok(Statement::Call(dest, ty, fname, params))
+            },
+        ),
+    ))(input)
 }
 
 #[cfg(test)]
@@ -757,9 +773,9 @@ mod tests {
     }
 
     #[test]
-    fn test_assign() {
+    fn test_stat() {
         assert_eq!(
-            assign("%c =w add %a, %b"),
+            stat("%c =w add %a, %b"),
             Ok((
                 "",
                 Statement::Assign(
@@ -769,6 +785,22 @@ mod tests {
                         Value::LocalVar(String::from("a")),
                         Value::LocalVar(String::from("b"))
                     )
+                )
+            ))
+        );
+
+        assert_eq!(
+            stat("%r =s call $myfunc(s %a, l %ap)"),
+            Ok((
+                "",
+                Statement::Call(
+                    String::from("r"),
+                    Type::Base(BaseType::Single),
+                    String::from("myfunc"),
+                    vec![
+                        FuncParam::Regular(Type::Base(BaseType::Single), String::from("a")),
+                        FuncParam::Regular(Type::Base(BaseType::Long), String::from("ap")),
+                    ],
                 )
             ))
         );

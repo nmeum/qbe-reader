@@ -134,7 +134,6 @@ pub enum Instr {
 
     // Memory
     LoadWord(Value),
-
     // Comparisons
     //Ult(Value, Value),
 }
@@ -142,5 +141,6 @@ pub enum Instr {
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Assign(String, BaseType, Instr),
+    Call(String, Type, String, Vec<FuncParam>),
     //Volatile(Instr),
 }
