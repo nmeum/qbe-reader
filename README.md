@@ -1,11 +1,11 @@
-### QBE IR Parser for Rust
+## QBE IR Parser for Rust
 
 qbe-reader is a Rust parser for v1.1 of the intermediate language of the [QBE compiler backend][qbe web].
 The parser is presently in very early stages of development.
 Most of the syntax is support but only a handful of instructions are properly parsed presently.
 For this reason, the API is not stable and still subject to change.
 
-## Usage
+### Usage
 
 The library is presently not available on crates.io.
 However, for now it is possible to depend directly on the Git repository:
@@ -15,12 +15,12 @@ However, for now it is possible to depend directly on the Git repository:
 
 Keep in mind though, that the API provided by qbe-reader is not yet stable though.
 
-## See also
+### See also
 
 * The [documentation of the QBL IL][qbe-il 1.1]
 * [qbe-rs][qbe-rs github] an unparser for the QBE IL in Rust
 
-## License
+### License
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published by
