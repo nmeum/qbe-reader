@@ -13,7 +13,7 @@ The library is presently not available on crates.io.
 However, for now it is possible to depend directly on the Git repository:
 
     [dependencies]
-    qbe_reader = { git = "https://git.8pit.net/qbe-reader.git" }
+    qbe_reader = { git = "https://github.com/nmeum/qbe-reader.git" }
 
 Keep in mind though, that the API provided by qbe-reader is not yet stable though.
 
