@@ -5,6 +5,8 @@ The parser is presently in very early stages of development.
 Most of the syntax is support but only a handful of instructions are properly parsed presently.
 For this reason, the API is not stable and still subject to change.
 
+I am using this parser to develop a symbolic execution tool for QBE IL: https://github.com/nmeum/qsym
+
 ### Usage
 
 The library is presently not available on crates.io.
