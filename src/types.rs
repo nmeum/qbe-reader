@@ -146,11 +146,21 @@ pub enum Instr {
     LoadWord(Value),
     // Comparisons
     //Ult(Value, Value),
+
+    // Stack Allocation
+    Alloc4(u64),
+    Alloc8(u64),
+    Alloc16(u64),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum VolatileInstr {
+    StoreWord(Value, Value),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Assign(String, BaseType, Instr),
     Call(String, Type, String, Vec<FuncParam>),
-    //Volatile(Instr),
+    Volatile(VolatileInstr),
 }

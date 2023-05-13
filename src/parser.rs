@@ -469,6 +469,18 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             preceded(ws(tag("loadw")), value),
             |v| -> Result<Instr, ()> { Ok(Instr::LoadWord(v)) },
         ),
+        map_res(
+            preceded(tag("alloc4"), ws(parse_u64)),
+            |v| -> Result<Instr, ()> { Ok(Instr::Alloc4(v)) },
+        ),
+        map_res(
+            preceded(tag("alloc8"), ws(parse_u64)),
+            |v| -> Result<Instr, ()> { Ok(Instr::Alloc8(v)) },
+        ),
+        map_res(
+            preceded(tag("alloc16"), ws(parse_u64)),
+            |v| -> Result<Instr, ()> { Ok(Instr::Alloc16(v)) },
+        ),
     ))(input)
 }
 
@@ -479,6 +491,13 @@ fn stat(input: &str) -> IResult<&str, Statement> {
             tuple((local, ws(char('=')), base_type, ws(instr))),
             |(dest, _, ty, inst)| -> Result<Statement, ()> {
                 Ok(Statement::Assign(dest, ty, inst))
+            },
+        ),
+        map_res(
+            instr_two_args("storew", value, value),
+            |(value, addr)| -> Result<Statement, ()> {
+                let instr = VolatileInstr::StoreWord(value, addr);
+                Ok(Statement::Volatile(instr))
             },
         ),
         map_res(
