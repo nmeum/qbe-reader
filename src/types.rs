@@ -118,7 +118,7 @@ impl FuncParam {
 pub struct Block {
     pub label: String,
     pub inst: Vec<Statement>,
-    pub jump: JumpInstr,
+    pub jump: Option<JumpInstr>,
 }
 
 #[derive(Debug, PartialEq)]

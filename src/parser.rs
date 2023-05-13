@@ -383,7 +383,7 @@ fn block(input: &str) -> IResult<&str, Block> {
             terminated(label, ws(newline1)),
             // TODO: Phi instructions
             many0(terminated(stat, ws(newline1))),
-            terminated(jump, ws(newline1)),
+            opt(terminated(jump, ws(newline1))),
         )),
         |(label, inst, jump)| -> Result<Block, ()> {
             Ok(Block {
@@ -785,7 +785,19 @@ mod tests {
                 Block {
                     label: String::from("start"),
                     inst: vec![],
-                    jump: JumpInstr::Halt,
+                    jump: Some(JumpInstr::Halt),
+                }
+            ))
+        );
+
+        assert_eq!(
+            block("@start\n"),
+            Ok((
+                "",
+                Block {
+                    label: String::from("start"),
+                    inst: vec![],
+                    jump: None,
                 }
             ))
         );
@@ -843,7 +855,7 @@ mod tests {
                     body: vec![Block {
                         label: String::from("start"),
                         inst: vec![],
-                        jump: JumpInstr::Halt,
+                        jump: Some(JumpInstr::Halt),
                     }]
                 }
             ))
