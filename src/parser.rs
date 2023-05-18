@@ -317,10 +317,10 @@ pub fn funcdef(input: &str) -> IResult<&str, FuncDef> {
 // SUBWTY := 'sb' | 'ub' | 'sh' | 'uh'
 fn sub_word(input: &str) -> IResult<&str, SubWordType> {
     alt((
-        bind(tag("sb"), SubWordType::SignedByte),
-        bind(tag("ub"), SubWordType::UnsignedHalf),
-        bind(tag("sh"), SubWordType::SignedHalf),
-        bind(tag("uh"), SubWordType::UnsignedHalf),
+        str("sb", SubWordType::SignedByte),
+        str("ub", SubWordType::UnsignedHalf),
+        str("sh", SubWordType::SignedHalf),
+        str("uh", SubWordType::UnsignedHalf),
     ))(input)
 }
 

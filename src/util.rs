@@ -1,4 +1,5 @@
 use nom::{
+    bytes::complete::tag,
     character::complete::{char, one_of},
     combinator::{map_res, recognize},
     error::{FromExternalError, ParseError},
@@ -27,6 +28,14 @@ where
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     map_res(inner, move |_| -> Result<T, ()> { Ok(val) })
+}
+
+// Parse on of the given strings and return the given value.
+pub fn str<'a, T: Copy, E: ParseError<&'a str> + FromExternalError<&'a str, ()> + 'a>(
+    name: &'a str,
+    val: T,
+) -> impl FnMut(&'a str) -> IResult<&'a str, T, E> {
+    bind(tag(name), val)
 }
 
 pub fn digits(input: &str) -> IResult<&str, &str> {
