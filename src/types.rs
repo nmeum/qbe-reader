@@ -135,6 +135,20 @@ pub enum JumpInstr {
     Halt,                       // hlt
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Sle,
+    Slt,
+    Sge,
+    Sgt,
+    Ule,
+    Ult,
+    Uge,
+    Ugt,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Instr {
     // Arithmetic and Bits
@@ -151,6 +165,9 @@ pub enum Instr {
     Alloc4(u64),
     Alloc8(u64),
     Alloc16(u64),
+
+    // Comparision
+    Compare(BaseType, CmpOp, Value, Value),
 }
 
 #[derive(Debug, PartialEq)]

@@ -439,6 +439,22 @@ fn value(input: &str) -> IResult<&str, Value> {
     ))(input)
 }
 
+// See https://c9x.me/compile/doc/il-v1.1.html#Comparisons
+pub fn compare_op(input: &str) -> IResult<&str, CmpOp> {
+    // TODO: Extend this for floating point comparisons.
+    alt((
+        str("eq", CmpOp::Eq),
+        str("ne", CmpOp::Ne),
+        str("sle", CmpOp::Sle),
+        str("sge", CmpOp::Sge),
+        str("sgt", CmpOp::Sgt),
+        str("ule", CmpOp::Ule),
+        str("ult", CmpOp::Ult),
+        str("uge", CmpOp::Uge),
+        str("ugt", CmpOp::Ugt),
+    ))(input)
+}
+
 fn instr_two_args<'a, F: 'a, O, E: ParseError<&'a str> + FromExternalError<&'a str, ()>>(
     name: &'a str,
     arg1: F,
@@ -480,6 +496,17 @@ fn instr(input: &str) -> IResult<&str, Instr> {
         map_res(
             preceded(tag("alloc16"), ws(parse_u64)),
             |v| -> Result<Instr, ()> { Ok(Instr::Alloc16(v)) },
+        ),
+        map_res(
+            tuple((
+                char('c'),
+                compare_op,
+                base_type,
+                ws(value),
+                char(','),
+                ws(value),
+            )),
+            |(_, op, ty, v1, _, v2)| -> Result<Instr, ()> { Ok(Instr::Compare(ty, op, v1, v2)) },
         ),
     ))(input)
 }
@@ -815,6 +842,23 @@ mod tests {
                     Instr::Add(
                         Value::LocalVar(String::from("a")),
                         Value::LocalVar(String::from("b"))
+                    )
+                )
+            ))
+        );
+
+        assert_eq!(
+            stat("%r =w ceqw %o1, %o2"),
+            Ok((
+                "",
+                Statement::Assign(
+                    String::from("r"),
+                    BaseType::Word,
+                    Instr::Compare(
+                        BaseType::Word,
+                        CmpOp::Eq,
+                        Value::LocalVar(String::from("o1")),
+                        Value::LocalVar(String::from("o2"))
                     )
                 )
             ))
