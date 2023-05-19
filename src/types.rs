@@ -21,6 +21,17 @@ pub enum SubWordType {
     UnsignedHalf,
 }
 
+impl SubWordType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            SubWordType::SignedByte => true,
+            SubWordType::UnsignedByte => false,
+            SubWordType::SignedHalf => true,
+            SubWordType::UnsignedHalf => false,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum SubType {
     ExtType(ExtType),
@@ -32,6 +43,25 @@ pub enum Type {
     Base(BaseType),
     SubWordType(SubWordType),
     UserDef(String),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum LoadType {
+    Base(BaseType),
+    SubWordType(SubWordType),
+    SignedWord,
+    UnsignedWord,
+}
+
+impl LoadType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            LoadType::SignedWord => true,
+            LoadType::UnsignedWord => false,
+            LoadType::Base(_) => false,
+            LoadType::SubWordType(x) => x.is_signed(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -157,9 +187,7 @@ pub enum Instr {
     Mul(Value, Value),
 
     // Memory
-    LoadWord(Value),
-    // Comparisons
-    //Ult(Value, Value),
+    Load(LoadType, Value),
 
     // Stack Allocation
     Alloc4(u64),
@@ -172,7 +200,7 @@ pub enum Instr {
 
 #[derive(Debug, PartialEq)]
 pub enum VolatileInstr {
-    StoreWord(Value, Value),
+    Store(ExtType, Value, Value),
 }
 
 #[derive(Debug, PartialEq)]

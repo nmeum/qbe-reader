@@ -324,6 +324,20 @@ fn sub_word(input: &str) -> IResult<&str, SubWordType> {
     ))(input)
 }
 
+// See https://c9x.me/compile/doc/il-v1.1.html#Memory
+fn load_type(input: &str) -> IResult<&str, LoadType> {
+    alt((
+        str("uw", LoadType::UnsignedWord),
+        str("sw", LoadType::SignedWord),
+        map_res(base_type, |ty| -> Result<LoadType, ()> {
+            Ok(LoadType::Base(ty))
+        }),
+        map_res(sub_word, |ty| -> Result<LoadType, ()> {
+            Ok(LoadType::SubWordType(ty))
+        }),
+    ))(input)
+}
+
 // ABITY  := BASETY | SUBWTY | :IDENT
 fn abity(input: &str) -> IResult<&str, Type> {
     alt((
@@ -482,8 +496,8 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
         ),
         map_res(
-            preceded(ws(tag("loadw")), value),
-            |v| -> Result<Instr, ()> { Ok(Instr::LoadWord(v)) },
+            pair(preceded(tag("load"), load_type), ws(value)),
+            |(ty, addr)| -> Result<Instr, ()> { Ok(Instr::Load(ty, addr)) },
         ),
         map_res(
             preceded(tag("alloc4"), ws(parse_u64)),
@@ -521,9 +535,14 @@ fn stat(input: &str) -> IResult<&str, Statement> {
             },
         ),
         map_res(
-            instr_two_args("storew", value, value),
-            |(value, addr)| -> Result<Statement, ()> {
-                let instr = VolatileInstr::StoreWord(value, addr);
+            tuple((
+                preceded(tag("store"), ext_type),
+                ws(value),
+                char(','),
+                ws(value),
+            )),
+            |(ty, value, _, addr)| -> Result<Statement, ()> {
+                let instr = VolatileInstr::Store(ty, value, addr);
                 Ok(Statement::Volatile(instr))
             },
         ),
