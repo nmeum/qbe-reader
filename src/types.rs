@@ -185,6 +185,13 @@ pub enum Instr {
     Add(Value, Value),
     Sub(Value, Value),
     Mul(Value, Value),
+    Neg(Value),
+    UDiv(Value, Value),
+    Rem(Value, Value),
+    URem(Value, Value),
+    Or(Value, Value),
+    Xor(Value, Value),
+    And(Value, Value),
 
     // Memory
     Load(LoadType, Value),

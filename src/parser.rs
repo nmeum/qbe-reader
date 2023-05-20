@@ -495,6 +495,33 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             instr_two_args("mul", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
         ),
+        map_res(preceded(tag("neg"), ws(value)), |v| -> Result<Instr, ()> {
+            Ok(Instr::Neg(v))
+        }),
+        map_res(
+            instr_two_args("udiv", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::UDiv(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("rem", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Rem(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("urem", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::URem(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("or", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Or(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("xor", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Xor(v1, v2)) },
+        ),
+        map_res(
+            instr_two_args("and", value, value),
+            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::And(v1, v2)) },
+        ),
         map_res(
             pair(preceded(tag("load"), load_type), ws(value)),
             |(ty, addr)| -> Result<Instr, ()> { Ok(Instr::Load(ty, addr)) },
