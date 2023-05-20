@@ -337,11 +337,11 @@ fn sub_long(input: &str) -> IResult<&str, SubLongType> {
 // See https://c9x.me/compile/doc/il-v1.1.html#Memory
 fn load_type(input: &str) -> IResult<&str, LoadType> {
     alt((
-        map_res(base_type, |ty| -> Result<LoadType, ()> {
-            Ok(LoadType::Base(ty))
-        }),
         map_res(sub_long, |ty| -> Result<LoadType, ()> {
             Ok(LoadType::SubLong(ty))
+        }),
+        map_res(base_type, |ty| -> Result<LoadType, ()> {
+            Ok(LoadType::Base(ty))
         }),
     ))(input)
 }
