@@ -32,6 +32,23 @@ impl SubWordType {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum SubLongType {
+    SubWord(SubWordType),
+    SignedWord,
+    UnsignedWord,
+}
+
+impl SubLongType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            SubLongType::SubWord(x) => x.is_signed(),
+            SubLongType::SignedWord => true,
+            SubLongType::UnsignedWord => false,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum SubType {
     ExtType(ExtType),
@@ -48,18 +65,14 @@ pub enum Type {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum LoadType {
     Base(BaseType),
-    SubWordType(SubWordType),
-    SignedWord,
-    UnsignedWord,
+    SubLong(SubLongType),
 }
 
 impl LoadType {
     pub fn is_signed(&self) -> bool {
         match self {
-            LoadType::SignedWord => true,
-            LoadType::UnsignedWord => false,
             LoadType::Base(_) => false,
-            LoadType::SubWordType(x) => x.is_signed(),
+            LoadType::SubLong(x) => x.is_signed(),
         }
     }
 }

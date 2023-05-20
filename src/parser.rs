@@ -324,16 +324,24 @@ fn sub_word(input: &str) -> IResult<&str, SubWordType> {
     ))(input)
 }
 
+fn sub_long(input: &str) -> IResult<&str, SubLongType> {
+    alt((
+        str("uw", SubLongType::UnsignedWord),
+        str("sw", SubLongType::SignedWord),
+        map_res(sub_word, |ty| -> Result<SubLongType, ()> {
+            Ok(SubLongType::SubWord(ty))
+        }),
+    ))(input)
+}
+
 // See https://c9x.me/compile/doc/il-v1.1.html#Memory
 fn load_type(input: &str) -> IResult<&str, LoadType> {
     alt((
-        str("uw", LoadType::UnsignedWord),
-        str("sw", LoadType::SignedWord),
         map_res(base_type, |ty| -> Result<LoadType, ()> {
             Ok(LoadType::Base(ty))
         }),
-        map_res(sub_word, |ty| -> Result<LoadType, ()> {
-            Ok(LoadType::SubWordType(ty))
+        map_res(sub_long, |ty| -> Result<LoadType, ()> {
+            Ok(LoadType::SubLong(ty))
         }),
     ))(input)
 }
