@@ -216,6 +216,9 @@ pub enum Instr {
 
     // Comparision
     Compare(BaseType, CmpOp, Value, Value),
+
+    // Conversions
+    Ext(SubLongType, Value),
 }
 
 #[derive(Debug, PartialEq)]

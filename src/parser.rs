@@ -557,6 +557,10 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             )),
             |(_, op, ty, v1, _, v2)| -> Result<Instr, ()> { Ok(Instr::Compare(ty, op, v1, v2)) },
         ),
+        map_res(
+            tuple((tag("ext"), sub_long, ws(value))),
+            |(_, ty, v)| -> Result<Instr, ()> { Ok(Instr::Ext(ty, v)) },
+        ),
     ))(input)
 }
 
