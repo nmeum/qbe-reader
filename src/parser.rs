@@ -477,7 +477,7 @@ pub fn compare_op(input: &str) -> IResult<&str, CmpOp> {
     ))(input)
 }
 
-fn instr_two_args<'a, F: 'a, O, E: ParseError<&'a str> + FromExternalError<&'a str, ()>>(
+fn instr_tuple<'a, F: 'a, O, E: ParseError<&'a str> + FromExternalError<&'a str, ()>>(
     name: &'a str,
     arg1: F,
     arg2: F,
@@ -492,42 +492,42 @@ where
 fn instr(input: &str) -> IResult<&str, Instr> {
     alt((
         map_res(
-            instr_two_args("add", value, value),
+            instr_tuple("add", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
         ),
         map_res(
-            instr_two_args("sub", value, value),
+            instr_tuple("sub", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Sub(v1, v2)) },
         ),
         map_res(
-            instr_two_args("mul", value, value),
+            instr_tuple("mul", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
         ),
         map_res(preceded(tag("neg"), ws(value)), |v| -> Result<Instr, ()> {
             Ok(Instr::Neg(v))
         }),
         map_res(
-            instr_two_args("udiv", value, value),
+            instr_tuple("udiv", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::UDiv(v1, v2)) },
         ),
         map_res(
-            instr_two_args("rem", value, value),
+            instr_tuple("rem", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Rem(v1, v2)) },
         ),
         map_res(
-            instr_two_args("urem", value, value),
+            instr_tuple("urem", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::URem(v1, v2)) },
         ),
         map_res(
-            instr_two_args("or", value, value),
+            instr_tuple("or", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Or(v1, v2)) },
         ),
         map_res(
-            instr_two_args("xor", value, value),
+            instr_tuple("xor", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Xor(v1, v2)) },
         ),
         map_res(
-            instr_two_args("and", value, value),
+            instr_tuple("and", value, value),
             |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::And(v1, v2)) },
         ),
         map_res(
