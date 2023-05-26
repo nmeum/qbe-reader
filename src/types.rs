@@ -192,6 +192,23 @@ pub enum CmpOp {
     Ugt,
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum AllocAlign {
+    Word,     // Align on 4-byte boundary
+    Long,     // Align on 8-byte boundary
+    LongLong, // Align on 16-byte boundary
+}
+
+impl AllocAlign {
+    pub fn byte_align(&self) -> u8 {
+        match self {
+            AllocAlign::Word => 4,
+            AllocAlign::Long => 8,
+            AllocAlign::LongLong => 16,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Instr {
     // Arithmetic and Bits
@@ -213,9 +230,7 @@ pub enum Instr {
     Load(LoadType, Value),
 
     // Stack Allocation
-    Alloc4(u64),
-    Alloc8(u64),
-    Alloc16(u64),
+    Alloc(AllocAlign, u64),
 
     // Comparision
     Compare(BaseType, CmpOp, Value, Value),

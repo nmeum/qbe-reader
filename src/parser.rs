@@ -499,6 +499,15 @@ macro_rules! make_instr {
     };
 }
 
+// ALLOC_ALIGN = 4 | 8 | 16
+fn alloc_align(input: &str) -> IResult<&str, AllocAlign> {
+    alt((
+        str("4", AllocAlign::Word),
+        str("8", AllocAlign::Long),
+        str("16", AllocAlign::LongLong),
+    ))(input)
+}
+
 // See https://c9x.me/compile/doc/il-v1.1.html#Instructions
 fn instr(input: &str) -> IResult<&str, Instr> {
     alt((
@@ -522,16 +531,8 @@ fn instr(input: &str) -> IResult<&str, Instr> {
             |(ty, addr)| -> Result<Instr, ()> { Ok(Instr::Load(ty, addr)) },
         ),
         map_res(
-            preceded(tag("alloc4"), ws(parse_u64)),
-            |v| -> Result<Instr, ()> { Ok(Instr::Alloc4(v)) },
-        ),
-        map_res(
-            preceded(tag("alloc8"), ws(parse_u64)),
-            |v| -> Result<Instr, ()> { Ok(Instr::Alloc8(v)) },
-        ),
-        map_res(
-            preceded(tag("alloc16"), ws(parse_u64)),
-            |v| -> Result<Instr, ()> { Ok(Instr::Alloc16(v)) },
+            pair(preceded(tag("alloc"), alloc_align), ws(parse_u64)),
+            |(align, amount)| -> Result<Instr, ()> { Ok(Instr::Alloc(align, amount)) },
         ),
         map_res(
             tuple((
