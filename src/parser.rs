@@ -488,48 +488,32 @@ where
     pair(preceded(tag(name), ws(arg1)), preceded(char(','), ws(arg2)))
 }
 
+macro_rules! make_instr {
+    { $NAME:expr, $CONS:expr } => {
+        map_res(
+            instr_tuple($NAME, value, value),
+            |(v1, v2)| -> Result<Instr, ()> {
+                Ok($CONS(v1, v2))
+            },
+        )
+    };
+}
+
 // See https://c9x.me/compile/doc/il-v1.1.html#Instructions
 fn instr(input: &str) -> IResult<&str, Instr> {
     alt((
-        map_res(
-            instr_tuple("add", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Add(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("sub", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Sub(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("mul", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Mul(v1, v2)) },
-        ),
+        make_instr!("add", Instr::Add),
+        make_instr!("sub", Instr::Sub),
+        make_instr!("mul", Instr::Mul),
         map_res(preceded(tag("neg"), ws(value)), |v| -> Result<Instr, ()> {
             Ok(Instr::Neg(v))
         }),
-        map_res(
-            instr_tuple("udiv", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::UDiv(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("rem", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Rem(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("urem", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::URem(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("or", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Or(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("xor", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::Xor(v1, v2)) },
-        ),
-        map_res(
-            instr_tuple("and", value, value),
-            |(v1, v2)| -> Result<Instr, ()> { Ok(Instr::And(v1, v2)) },
-        ),
+        make_instr!("udiv", Instr::UDiv),
+        make_instr!("rem", Instr::Rem),
+        make_instr!("urem", Instr::URem),
+        make_instr!("or", Instr::Or),
+        make_instr!("xor", Instr::Xor),
+        make_instr!("and", Instr::And),
         map_res(
             pair(preceded(tag("load"), load_type), ws(value)),
             |(ty, addr)| -> Result<Instr, ()> { Ok(Instr::Load(ty, addr)) },
