@@ -224,6 +224,7 @@ pub enum Instr {
 #[derive(Debug, PartialEq)]
 pub enum VolatileInstr {
     Store(ExtType, Value, Value),
+    Blit(Value, Value, u64),
 }
 
 #[derive(Debug, PartialEq)]

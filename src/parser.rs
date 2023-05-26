@@ -587,6 +587,20 @@ fn stat(input: &str) -> IResult<&str, Statement> {
         ),
         map_res(
             tuple((
+                tag("blit"),
+                ws(value),
+                char(','),
+                ws(value),
+                char(','),
+                ws(parse_u64),
+            )),
+            |(_, src, _, dst, _, n)| -> Result<Statement, ()> {
+                let instr = VolatileInstr::Blit(src, dst, n);
+                Ok(Statement::Volatile(instr))
+            },
+        ),
+        map_res(
+            tuple((
                 local,
                 ws(char('=')),
                 abity,
@@ -919,6 +933,18 @@ mod tests {
                         Value::LocalVar(String::from("o2"))
                     )
                 )
+            ))
+        );
+
+        assert_eq!(
+            stat("blit %s0, %s1, 8"),
+            Ok((
+                "",
+                Statement::Volatile(VolatileInstr::Blit(
+                    Value::LocalVar(String::from("s0")),
+                    Value::LocalVar(String::from("s1")),
+                    8
+                ))
             ))
         );
 
