@@ -205,6 +205,9 @@ pub enum Instr {
     Or(Value, Value),
     Xor(Value, Value),
     And(Value, Value),
+    Sar(Value, Value),
+    Shr(Value, Value),
+    Shl(Value, Value),
 
     // Memory
     Load(LoadType, Value),

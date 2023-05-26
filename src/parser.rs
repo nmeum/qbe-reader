@@ -514,6 +514,9 @@ fn instr(input: &str) -> IResult<&str, Instr> {
         make_instr!("or", Instr::Or),
         make_instr!("xor", Instr::Xor),
         make_instr!("and", Instr::And),
+        make_instr!("sar", Instr::Sar),
+        make_instr!("shr", Instr::Shr),
+        make_instr!("shl", Instr::Shl),
         map_res(
             pair(preceded(tag("load"), load_type), ws(value)),
             |(ty, addr)| -> Result<Instr, ()> { Ok(Instr::Load(ty, addr)) },
