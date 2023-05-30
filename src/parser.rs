@@ -1,5 +1,6 @@
 use crate::types::*;
 use crate::util::*;
+use std::collections::HashMap;
 
 use nom::{
     branch::alt,
@@ -403,13 +404,14 @@ fn block(input: &str) -> IResult<&str, Block> {
     map_res(
         tuple((
             terminated(label, ws(newline1)),
-            // TODO: Phi instructions
+            many0(terminated(phi, ws(newline1))),
             many0(terminated(stat, ws(newline1))),
             opt(terminated(jump, ws(newline1))),
         )),
-        |(label, inst, jump)| -> Result<Block, ()> {
+        |(label, phis, inst, jump)| -> Result<Block, ()> {
             Ok(Block {
                 label: label,
+                phi: phis,
                 inst: inst,
                 jump: jump,
             })
@@ -459,6 +461,33 @@ fn value(input: &str) -> IResult<&str, Value> {
             Ok(Value::Const(cnst))
         }),
     ))(input)
+}
+
+// PHI_LABELS := 'phi' ( @IDENT VAL ),
+pub fn phi_labels(input: &str) -> IResult<&str, HashMap<String, Value>> {
+    map_res(
+        preceded(
+            ws(tag("phi")),
+            separated_list1(ws(char(',')), pair(label, value)),
+        ),
+        |xs: Vec<(String, Value)>| -> Result<HashMap<String, Value>, ()> {
+            Ok(HashMap::from_iter(xs.into_iter()))
+        },
+    )(input)
+}
+
+// PHI := %IDENT '=' BASETY PHI_LABELS
+pub fn phi(input: &str) -> IResult<&str, Phi> {
+    map_res(
+        tuple((local, ws(char('=')), base_type, ws(phi_labels))),
+        |(dest, _, ty, labels)| -> Result<Phi, ()> {
+            Ok(Phi {
+                ident: dest,
+                base_type: ty,
+                labels,
+            })
+        },
+    )(input)
 }
 
 // See https://c9x.me/compile/doc/il-v1.1.html#Comparisons
@@ -872,6 +901,7 @@ mod tests {
                 "",
                 Block {
                     label: String::from("start"),
+                    phi: vec![],
                     inst: vec![],
                     jump: Some(JumpInstr::Halt),
                 }
@@ -884,8 +914,35 @@ mod tests {
                 "",
                 Block {
                     label: String::from("start"),
+                    phi: vec![],
                     inst: vec![],
                     jump: None,
+                }
+            ))
+        );
+
+        assert_eq!(
+            block("@.1\n%y =w phi @ift 1, @iff 2\nret\n"),
+            Ok((
+                "",
+                Block {
+                    label: String::from(".1"),
+                    phi: vec![Phi {
+                        ident: String::from("y"),
+                        base_type: BaseType::Word,
+                        labels: HashMap::from([
+                            (
+                                String::from("ift"),
+                                Value::Const(DynConst::Const(Const::Number(1)))
+                            ),
+                            (
+                                String::from("iff"),
+                                Value::Const(DynConst::Const(Const::Number(2)))
+                            )
+                        ])
+                    }],
+                    inst: vec![],
+                    jump: Some(JumpInstr::Return(None)),
                 }
             ))
         );
@@ -971,6 +1028,7 @@ mod tests {
                     )],
                     body: vec![Block {
                         label: String::from("start"),
+                        phi: vec![],
                         inst: vec![],
                         jump: Some(JumpInstr::Halt),
                     }]

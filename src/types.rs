@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BaseType {
     Word,
@@ -160,6 +162,7 @@ impl FuncParam {
 #[derive(Debug, PartialEq)]
 pub struct Block {
     pub label: String,
+    pub phi: Vec<Phi>,
     pub inst: Vec<Statement>,
     pub jump: Option<JumpInstr>,
 }
@@ -207,6 +210,13 @@ impl AllocAlign {
             AllocAlign::LongLong => 16,
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Phi {
+    pub ident: String,
+    pub base_type: BaseType,
+    pub labels: HashMap<String, Value>,
 }
 
 #[derive(Debug, PartialEq)]
