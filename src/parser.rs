@@ -468,6 +468,7 @@ pub fn compare_op(input: &str) -> IResult<&str, CmpOp> {
         str("eq", CmpOp::Eq),
         str("ne", CmpOp::Ne),
         str("sle", CmpOp::Sle),
+        str("slt", CmpOp::Slt),
         str("sge", CmpOp::Sge),
         str("sgt", CmpOp::Sgt),
         str("ule", CmpOp::Ule),
