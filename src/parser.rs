@@ -468,7 +468,7 @@ pub fn phi_labels(input: &str) -> IResult<&str, HashMap<String, Value>> {
     map_res(
         preceded(
             ws(tag("phi")),
-            separated_list1(ws(char(',')), pair(label, value)),
+            separated_list1(ws(char(',')), pair(label, ws(value))),
         ),
         |xs: Vec<(String, Value)>| -> Result<HashMap<String, Value>, ()> {
             Ok(HashMap::from_iter(xs.into_iter()))
@@ -922,22 +922,22 @@ mod tests {
         );
 
         assert_eq!(
-            block("@.1\n%y =w phi @ift 1, @iff 2\nret\n"),
+            block("@.1\n%.10 =w phi @body.10 0, @logic_right.11 %foo\nret\n"),
             Ok((
                 "",
                 Block {
                     label: String::from(".1"),
                     phi: vec![Phi {
-                        ident: String::from("y"),
+                        ident: String::from(".10"),
                         base_type: BaseType::Word,
                         labels: HashMap::from([
                             (
-                                String::from("ift"),
-                                Value::Const(DynConst::Const(Const::Number(1)))
+                                String::from("body.10"),
+                                Value::Const(DynConst::Const(Const::Number(0)))
                             ),
                             (
-                                String::from("iff"),
-                                Value::Const(DynConst::Const(Const::Number(2)))
+                                String::from("logic_right.11"),
+                                Value::LocalVar(String::from("foo")),
                             )
                         ])
                     }],
